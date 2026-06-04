@@ -1,0 +1,11 @@
+{
+  "name": "Talent2030",
+  "description": "Talent2030 demo: Gemini Live coaching, employee context, skill paths, and performance review rehearsal.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
