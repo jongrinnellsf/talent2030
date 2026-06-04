@@ -2914,6 +2914,13 @@ body {
   color: var(--text-muted);
 }
 
+.delivery-playbook__demo-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .delivery-playbook__section {
   display: flex;
   flex-direction: column;
@@ -5050,6 +5057,38 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--color-canvas);
+}
+
+.landing-shell__header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1rem 1.5rem 0;
+}
+
+.landing-shell__github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-ink-muted-48);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.landing-shell__github:hover {
+  color: var(--color-ink);
+  background: var(--color-divider-soft);
+}
+
+.landing-shell__github-icon {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .landing-shell__main {

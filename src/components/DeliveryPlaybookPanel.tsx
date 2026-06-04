@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { PlayIcon } from "@radix-ui/react-icons";
+import { DemoRehearseHint } from "./DemoRehearseHint";
+import { DEFAULT_EMPLOYEE_ID } from "../data/directReports";
 import type { DeliveryPlaybook, PlaybookConfidence } from "../types";
 
 type DeliveryPlaybookPanelProps = {
@@ -21,6 +23,7 @@ function ConfidencePill({ confidence }: { confidence: PlaybookConfidence }) {
 }
 
 export function DeliveryPlaybookPanel({ playbook }: DeliveryPlaybookPanelProps) {
+  const practiceEnabled = playbook.employeeId === DEFAULT_EMPLOYEE_ID;
   const recommendedReaction = playbook.potentialReactions.find(
     (reaction) => reaction.id === playbook.recommendedPractice.reactionId
   );
@@ -31,6 +34,8 @@ export function DeliveryPlaybookPanel({ playbook }: DeliveryPlaybookPanelProps) 
         Synthesized from Slack, Google Meet, Asana, Gmail, Calendar, and Workday
       </p>
 
+      {!practiceEnabled && <DemoRehearseHint />}
+
       {recommendedReaction && (
         <section className="delivery-playbook__recommended">
           <p className="delivery-playbook__recommended-label">Recommended practice</p>
@@ -38,13 +43,15 @@ export function DeliveryPlaybookPanel({ playbook }: DeliveryPlaybookPanelProps) 
           <p className="delivery-playbook__recommended-rationale">
             {playbook.recommendedPractice.rationale}
           </p>
-          <Link
-            to={recommendedReaction.practiceHref}
-            className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-[0.8125rem]"
-          >
-            <PlayIcon className="h-3.5 w-3.5" />
-            Practice this scenario
-          </Link>
+          {practiceEnabled && (
+            <Link
+              to={recommendedReaction.practiceHref}
+              className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-[0.8125rem]"
+            >
+              <PlayIcon className="h-3.5 w-3.5" />
+              Practice this scenario
+            </Link>
+          )}
         </section>
       )}
 
@@ -77,13 +84,15 @@ export function DeliveryPlaybookPanel({ playbook }: DeliveryPlaybookPanelProps) 
                 <ConfidencePill confidence={reaction.confidence} />
               </div>
               <p className="playbook-reaction__description">{reaction.description}</p>
-              <Link
-                to={reaction.practiceHref}
-                className="playbook-reaction__practice btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem]"
-              >
-                <PlayIcon className="h-3 w-3" />
-                Practice this
-              </Link>
+              {practiceEnabled && (
+                <Link
+                  to={reaction.practiceHref}
+                  className="playbook-reaction__practice btn-secondary inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.75rem]"
+                >
+                  <PlayIcon className="h-3 w-3" />
+                  Practice this
+                </Link>
+              )}
             </li>
           ))}
         </ul>
