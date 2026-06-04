@@ -67,6 +67,28 @@ GEMINI_API_KEY="your-key" npm start
 
 Serves on port **3000** (`0.0.0.0`).
 
+### Deploy to Vercel
+
+The repo includes `vercel.json` and `api/index.ts` (Express as a serverless function). Import the GitHub repo in [Vercel](https://vercel.com/new) or use the CLI:
+
+```bash
+npx vercel link          # once, connect to jongrinnellsf/talent2030
+npx vercel env add GEMINI_API_KEY production
+npm run build            # optional local smoke test
+npx vercel --prod
+```
+
+**Environment variable (required):** `GEMINI_API_KEY` — same key as local `.env`.
+
+**What works on Vercel**
+
+- Landing, Team, Settings UI
+- Manager copilot, skill paths, freeform explore (voice via ephemeral tokens + REST APIs)
+
+**What does not work on Vercel**
+
+- **Rehearsal** (`/live` WebSocket) — Vercel serverless functions do not support long-lived WebSockets. Rehearsal needs `npm run dev` locally or a Node host such as Railway, Render, or Fly.
+
 ### Other scripts
 
 | Command | Purpose |

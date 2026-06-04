@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import {
   GoogleGenAI,
   LiveServerMessage,
@@ -170,10 +169,23 @@ function handleGeminiMessage(
   }
 }
 
-async function startServer() {
+export type CreateAppOptions = {
+  /** Start HTTP listener (local dev / Node hosting). */
+  listen?: boolean;
+  /** Attach WebSocket `/live` for rehearsal (requires listen). */
+  webSocket?: boolean;
+  /** Vite HMR middleware (local dev only). */
+  useVite?: boolean;
+};
+
+export async function createApp(options: CreateAppOptions = {}) {
+  const listen = options.listen ?? false;
+  const webSocket = options.webSocket ?? false;
+  const useVite = options.useVite ?? false;
+
   const app = express();
   app.use(express.json({ limit: "2mb" }));
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   if (!process.env.GEMINI_API_KEY) {
     console.error(
@@ -286,13 +298,20 @@ async function startServer() {
     }
   });
 
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (webSocket && !listen) {
+    throw new Error("WebSocket rehearsal requires listen: true");
+  }
 
-  const wss = new WebSocketServer({ server, path: "/live" });
+  const server = listen
+    ? app.listen(PORT, "0.0.0.0", () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+      })
+    : null;
 
-  wss.on("connection", (clientWs) => {
+  if (webSocket && server) {
+    const wss = new WebSocketServer({ server, path: "/live" });
+
+    wss.on("connection", (clientWs) => {
     console.log("Client connected to /live");
 
     const sessionRef: { current: Session | null } = { current: null };
@@ -551,9 +570,18 @@ async function startServer() {
       sessionRef.current?.close();
       sessionRef.current = null;
     });
-  });
+    });
+  } else if (!webSocket) {
+    app.all("/live", (_req, res) => {
+      res.status(503).json({
+        error:
+          "Rehearsal WebSocket is not available on this host. Use manager copilot, skill paths, or freeform explore, or run the app locally / on a Node server with WebSocket support.",
+      });
+    });
+  }
 
-  if (process.env.NODE_ENV !== "production") {
+  if (useVite) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -562,10 +590,24 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*all", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  return { app, server };
 }
 
-startServer();
+function shouldStartStandaloneServer(): boolean {
+  if (process.env.VERCEL) return false;
+  const entry = process.argv[1] ?? "";
+  return /server\.(ts|cjs|js)$/.test(entry);
+}
+
+if (shouldStartStandaloneServer()) {
+  void createApp({
+    listen: true,
+    webSocket: true,
+    useVite: process.env.NODE_ENV !== "production",
+  });
+}
