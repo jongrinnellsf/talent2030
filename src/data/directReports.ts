@@ -20,8 +20,8 @@ export const directReports: DirectReport[] = [
       "Checkout refresh slipped in Q1; completion never improved. Inconsistent 1:1 follow-through. Defensive tone in Slack when challenged on scope.",
   },
   {
-    id: "priya-nair",
-    name: "Priya Nair",
+    id: "priya-reddy",
+    name: "Priya Reddy",
     role: "Staff Engineer",
     level: "L6",
     tenure: "4 years 1 month",

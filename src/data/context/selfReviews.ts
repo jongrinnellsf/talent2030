@@ -14,7 +14,7 @@ export const selfReviews: Record<string, SelfPerformanceReview> = {
     nextPeriodGoals:
       "Ship the checkout refresh with a firm launch date. Cut experiment cycle time by 20%. Tighten cross-functional planning with Eng and Design.",
   },
-  "priya-nair": {
+  "priya-reddy": {
     cycleLabel: "2026 Annual Performance Review",
     submittedDate: "Apr 12, 2026",
     selfRating: "5/5: Exceeds expectations",

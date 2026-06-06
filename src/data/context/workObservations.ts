@@ -143,7 +143,7 @@ export const workObservations: Record<string, WorkObservation[]> = {
         "Two of three KRs missed. Sharp contrast with Mark's 4/5 self-rating and \"80% delivered\" framing.",
     },
   ],
-  "priya-nair": [
+  "priya-reddy": [
     {
       id: "obs-pn-slack-1",
       source: "slack",

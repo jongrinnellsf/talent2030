@@ -56,8 +56,8 @@ export const deliveryPlaybooks: Record<string, DeliveryPlaybook> = {
         "Defensive pushback is the highest-risk delivery here. Rehearse staying factual and COIN-grounded before the easier scenarios.",
     },
   },
-  "priya-nair": {
-    employeeId: "priya-nair",
+  "priya-reddy": {
+    employeeId: "priya-reddy",
     headlineTension:
       "Priya and you both rate them at the top of the band, but Priya wants principal-track scope formalized while calibration still treats it as informal. This is a growth conversation, not a surprise rating.",
     signalsSummary:

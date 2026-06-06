@@ -20,7 +20,7 @@ const COLLABORATION_DEMO = [
   "Weekly 1:1s with all five direct reports",
   "Product leadership channel (#product-leads) — daily async",
   "Calibration prep with VP Engineering and People Ops",
-  "Cross-functional partner: Priya Nair (platform), Jordan Lee (design)",
+  "Cross-functional partner: Priya Reddy (platform), Jordan Lee (design)",
 ];
 
 const LEARNING_DEMO = [

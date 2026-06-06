@@ -18,7 +18,7 @@ export const managerReviews: Record<string, ManagerWrittenReview> = {
     deliveryNotes:
       "Nothing new at the rating reveal: reference prior 1:1s and written follow-ups. Use COIN on specific Slack and meeting behaviors. Anchor one example on checkout (launch slipped, completion never improved). Separate intent from impact. Co-create a recovery plan; partner with HR if milestones slip.",
   },
-  "priya-nair": {
+  "priya-reddy": {
     cycleLabel: "2026 Annual Performance Review",
     completedDate: "May 8, 2026",
     overallRating: "5/5: Exceeds expectations",
