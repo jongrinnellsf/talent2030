@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { GoogleGenAI, type LiveServerMessage, type Session } from "@google/genai";
 import { PlayIcon, SpeakerLoudIcon, SpeakerOffIcon, StopIcon } from "@radix-ui/react-icons";
 import { AnimatePresence, motion } from "motion/react";
 import { CoachMark } from "../components/CoachMark";
@@ -90,7 +91,7 @@ export default function LiveManagerApp({
     return report?.photoUrl ?? "/employees/markwebb.png";
   }, [employeeId]);
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const sessionRef = useRef<Session | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const playbackCtxRef = useRef<AudioContext | null>(null);
   const coachOutputRef = useRef<AnalyserNode | null>(null);
@@ -100,9 +101,6 @@ export default function LiveManagerApp({
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
-  const mediaStartedRef = useRef(false);
-  const pendingStreamRef = useRef<MediaStream | null>(null);
-  const pendingAudioCtxRef = useRef<AudioContext | null>(null);
   const connectTimeoutRef = useRef<number | null>(null);
   const stoppingRef = useRef(false);
   const isConnectingRef = useRef(false);
@@ -113,9 +111,7 @@ export default function LiveManagerApp({
   const employeeIdRef = useRef(employeeId);
   const sessionModeRef = useRef(sessionMode);
   const simulateScenarioRef = useRef(simulateScenario);
-  const geminiReadyRef = useRef(false);
   const autoStartTriggeredRef = useRef(false);
-  const pendingTextPromptRef = useRef<string | null>(null);
   const hudQueueRef = useRef<HudCueItem[]>([]);
   const hudDisplayTimerRef = useRef<number | null>(null);
   const hudShowingRef = useRef(false);
@@ -367,37 +363,66 @@ export default function LiveManagerApp({
     };
   }, [isConnected, liveCoachingEnabled, sessionMode]);
 
-  const beginMedia = (ws: WebSocket) => {
-    if (
-      mediaStartedRef.current ||
-      !pendingStreamRef.current ||
-      !pendingAudioCtxRef.current ||
-      !geminiReadyRef.current
-    ) {
-      return;
-    }
-    mediaStartedRef.current = true;
-    if (connectTimeoutRef.current) {
-      clearTimeout(connectTimeoutRef.current);
-      connectTimeoutRef.current = null;
-    }
-    isConnectedRef.current = true;
-    setIsConnected(true);
-    setIsConnecting(false);
-    setSessionStart(new Date());
-    if (sessionModeRef.current === "rehearse") {
-      const scenario = SIMULATE_SCENARIOS[simulateScenarioRef.current];
-      logEmployeeActivity({
-        area: "Rehearse",
-        action: `Started live rehearsal with ${employeeName}`,
-        detail: `${scenario.title} — voice session with Mark (camera off).`,
+  const handleRehearseMessage = (message: LiveServerMessage) => {
+    const content = message.serverContent;
+    if (!content) return;
+
+    if (content.interrupted) {
+      clearAudioQueue();
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "manager" && !last.isFinished) {
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...last,
+              text: polishFinishedTranscript(last.text),
+              isFinished: true,
+            },
+          ];
+        }
+        return prev;
       });
     }
-    startMediaProcessing(
-      pendingStreamRef.current,
-      ws,
-      pendingAudioCtxRef.current
-    );
+
+    if (content.modelTurn?.parts) {
+      for (const part of content.modelTurn.parts) {
+        if (part.inlineData?.data) {
+          playAudioChunk(part.inlineData.data);
+        }
+      }
+    }
+
+    const managerTextParts: string[] = [];
+
+    if (content.outputTranscription?.text) {
+      managerTextParts.push(content.outputTranscription.text);
+    } else if (content.modelTurn?.parts) {
+      for (const part of content.modelTurn.parts) {
+        if (typeof part.text === "string" && part.text.trim().length > 0) {
+          managerTextParts.push(part.text);
+        }
+      }
+    }
+
+    if (content.inputTranscription?.text) {
+      appendUserText(
+        content.inputTranscription.text,
+        content.inputTranscription.finished ?? false
+      );
+    }
+
+    const joinedText = managerTextParts
+      .reduce((acc, part) => mergeStreamingTranscript(acc, part), "")
+      .trim();
+
+    if (joinedText.length > 0) {
+      appendManagerText(joinedText, false);
+    }
+
+    if (content.turnComplete) {
+      appendManagerText("", true);
+    }
   };
 
   useLayoutEffect(() => {
@@ -545,8 +570,8 @@ export default function LiveManagerApp({
   const toggleMic = () => {
     const nextActive = !isMicActive;
     setIsMicActive(nextActive);
-    if (!nextActive && wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ audioStreamEnd: true }));
+    if (!nextActive && sessionRef.current) {
+      sessionRef.current.sendRealtimeInput({ audioStreamEnd: true });
     }
   };
 
@@ -586,8 +611,6 @@ export default function LiveManagerApp({
     setIsConnecting(true);
     isConnectingRef.current = true;
     stoppingRef.current = false;
-    mediaStartedRef.current = false;
-    geminiReadyRef.current = false;
     setMessages([]);
     endedDurationSecondsRef.current = undefined;
     assessedThisSessionRef.current = false;
@@ -597,15 +620,44 @@ export default function LiveManagerApp({
       updateConfig({ liveCoachingEnabled: true });
     }
 
+    connectTimeoutRef.current = window.setTimeout(() => {
+      if (isConnectingRef.current) {
+        setConnectionError("Connection timed out. Try again in a moment.");
+        stopSession();
+      }
+    }, 20_000);
+
     try {
+      const tokenRes = await fetch("/api/rehearse/live-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: DEFAULT_EMPLOYEE_ID,
+          scenario: simulateScenarioRef.current,
+          contextSnapshot: getContextSnapshot(),
+        }),
+      });
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json().catch(() => ({}));
+        throw new Error(
+          typeof err.error === "string"
+            ? err.error
+            : "Could not start rehearsal session."
+        );
+      }
+
+      const { token, model, employeeBriefing } = (await tokenRes.json()) as {
+        token: string;
+        model: string;
+        employeeBriefing: string;
+      };
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
-      pendingStreamRef.current = stream;
 
       const audioCtx = new AudioContext();
       await audioCtx.resume();
       audioCtxRef.current = audioCtx;
-      pendingAudioCtxRef.current = audioCtx;
 
       const playbackCtx = new AudioContext();
       await playbackCtx.resume();
@@ -619,100 +671,77 @@ export default function LiveManagerApp({
       nextStartTimeRef.current = 0;
       scheduledSourcesRef.current = [];
 
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.host}/live`;
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      const ai = new GoogleGenAI({
+        apiKey: token,
+        httpOptions: { apiVersion: "v1alpha" },
+      });
 
-      ws.onopen = () => {
-        ws.send(
-          JSON.stringify({
-            type: "start",
-            employeeId: DEFAULT_EMPLOYEE_ID,
-            sessionMode: "rehearse",
-            scenario: simulateScenarioRef.current,
-            contextSnapshot: getContextSnapshot(),
-          })
-        );
-      };
-
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-
-        if (msg.error) {
-          setConnectionError(msg.error);
-          stopSession();
-          return;
-        }
-
-        if (msg.ready) {
-          geminiReadyRef.current = true;
-          beginMedia(ws);
-          if (pendingTextPromptRef.current) {
-            const prompt = pendingTextPromptRef.current;
-            pendingTextPromptRef.current = null;
-            appendUserText(prompt, true);
-            ws.send(JSON.stringify({ text: prompt }));
-          }
-        }
-
-        if (msg.audio) {
-          playAudioChunk(msg.audio);
-        }
-
-        if (msg.text) {
-          appendManagerText(msg.text, false);
-        }
-
-        if (msg.turnComplete) {
-          appendManagerText("", true);
-        }
-
-        if (msg.inputText) {
-          appendUserText(msg.inputText, msg.inputFinished);
-        }
-
-        if (msg.interrupted) {
-          clearAudioQueue();
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last && last.role === "manager" && !last.isFinished) {
-              return [
-                ...prev.slice(0, -1),
-                {
-                  ...last,
-                  text: polishFinishedTranscript(last.text),
-                  isFinished: true,
-                },
-              ];
+      const session = await ai.live.connect({
+        model: model ?? "gemini-3.1-flash-live-preview",
+        callbacks: {
+          onmessage: handleRehearseMessage,
+          onerror: () => {
+            setConnectionError("Voice session error. Try reconnecting.");
+            stopSession();
+          },
+          onclose: () => {
+            if (!stoppingRef.current) {
+              if (isConnectingRef.current) {
+                setConnectionError("Connection closed before session started.");
+              }
+              stopSession();
             }
-            return prev;
-          });
-        }
-      };
+          },
+        },
+      });
 
-      ws.onerror = () => {
-        setConnectionError("WebSocket connection failed. Restart the dev server (Ctrl+C, then npm run dev).");
-        stopSession();
-      };
+      sessionRef.current = session;
 
-      connectTimeoutRef.current = window.setTimeout(() => {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          setConnectionError("Connection timed out. Restart the dev server (Ctrl+C, then npm run dev).");
-          stopSession();
-        }
-      }, 15_000);
+      session.sendClientContent({
+        turns: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `Internal coach briefing loaded for this session. Use this as ground truth about the employee. Do not read this aloud. Do not respond verbally to this message.\n\n${employeeBriefing}`,
+              },
+            ],
+          },
+        ],
+        turnComplete: false,
+      });
 
-      ws.onclose = () => {
-        if (!stoppingRef.current && isConnectingRef.current) {
-          setConnectionError("Connection closed before session started. Restart the dev server (Ctrl+C, then npm run dev).");
-        }
-        stopSession();
-      };
-    } catch (err) {
-      console.error("Error accessing media devices", err);
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+
+      startMediaProcessing(stream, audioCtx);
+
+      isConnectingRef.current = false;
+      isConnectedRef.current = true;
+      setIsConnected(true);
       setIsConnecting(false);
-      setConnectionError("Could not access microphone. Please grant permissions.");
+      setSessionStart(new Date());
+
+      if (sessionModeRef.current === "rehearse") {
+        const scenario = SIMULATE_SCENARIOS[simulateScenarioRef.current];
+        logEmployeeActivity({
+          area: "Rehearse",
+          action: `Started live rehearsal with ${employeeName}`,
+          detail: `${scenario.title} — voice session with Mark (camera off).`,
+        });
+      }
+    } catch (err) {
+      console.error("Error starting rehearsal session", err);
+      setIsConnecting(false);
+      isConnectingRef.current = false;
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : "Could not start rehearsal session."
+      );
+      stopSession();
     }
   };
 
@@ -733,11 +762,6 @@ export default function LiveManagerApp({
     setElapsed("00:00");
     setMicAnalyser(null);
     setCoachAnalyser(null);
-    mediaStartedRef.current = false;
-    geminiReadyRef.current = false;
-    pendingTextPromptRef.current = null;
-    pendingStreamRef.current = null;
-    pendingAudioCtxRef.current = null;
     coachOutputRef.current = null;
     resetRehearseSession();
     setConnectionError(null);
@@ -747,10 +771,8 @@ export default function LiveManagerApp({
     }
     clearAudioQueue();
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    sessionRef.current?.close();
+    sessionRef.current = null;
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       mediaStreamRef.current = null;
@@ -769,11 +791,7 @@ export default function LiveManagerApp({
     }
   };
 
-  const startMediaProcessing = (
-    stream: MediaStream,
-    ws: WebSocket,
-    audioCtx: AudioContext
-  ) => {
+  const startMediaProcessing = (stream: MediaStream, audioCtx: AudioContext) => {
     const source = audioCtx.createMediaStreamSource(stream);
     const micAnalyserNode = audioCtx.createAnalyser();
     micAnalyserNode.fftSize = 512;
@@ -791,17 +809,21 @@ export default function LiveManagerApp({
     silentGain.connect(audioCtx.destination);
 
     processor.onaudioprocess = (e) => {
-      if (ws.readyState === WebSocket.OPEN && isMicActiveRef.current) {
-        const pcm = e.inputBuffer.getChannelData(0);
-        const resampled = resampleToRate(
-          pcm,
-          audioCtx.sampleRate,
-          LIVE_INPUT_SAMPLE_RATE
-        );
-        const pcmBuffer = encodePcmToBuffer(resampled);
-        const base64Audio = bufferToBase64(pcmBuffer);
-        ws.send(JSON.stringify({ audio: base64Audio }));
-      }
+      if (!isMicActiveRef.current || !sessionRef.current) return;
+      const pcm = e.inputBuffer.getChannelData(0);
+      const resampled = resampleToRate(
+        pcm,
+        audioCtx.sampleRate,
+        LIVE_INPUT_SAMPLE_RATE
+      );
+      const pcmBuffer = encodePcmToBuffer(resampled);
+      const base64Audio = bufferToBase64(pcmBuffer);
+      sessionRef.current.sendRealtimeInput({
+        audio: {
+          data: base64Audio,
+          mimeType: `audio/pcm;rate=${LIVE_INPUT_SAMPLE_RATE}`,
+        },
+      });
     };
   };
 

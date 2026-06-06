@@ -18,7 +18,7 @@ The fictional company is **Acme AI Co.** You sign in as **Will Ray** (VP of Prod
 - **Manager copilot** — Voice + live canvas for performance process, leadership, and team questions. Uses `talentmanagement.md` and `employee.md` plus optional session focus on a direct report.
 - **Skill paths** — Pick a topic (e.g. Gemini AI, Cursor), short intake, then a generated path with voice-driven slides, web-grounded content, and a verbal knowledge check.
 - **Explore freely** — Open-ended learning; the canvas updates from tool calls as you talk.
-- **Rehearse** — Meet-style roleplay with **Mark Webb** (demo direct report): camera optional, live coaching HUD cues, post-session assessment. Rehearsal sends a snapshot of agent context over the server WebSocket at session start.
+- **Rehearse** — Meet-style roleplay with **Mark Webb** (demo direct report): camera optional, live coaching HUD cues, post-session assessment. Rehearsal mints an ephemeral Live token with your context snapshot (same pattern as other coach voice modes).
 
 Rehearsal scenarios: `default`, `defensive`, `accepting` (see `src/data/simulateScenarios.ts`).
 
@@ -29,7 +29,7 @@ Context is **markdown generated at runtime** (not static files on disk). In Sett
 - **talentmanagement.md** — Performance cycle, rating scale, COIN delivery framework, timeline, and underperformance guidance.
 - **employee.md** — The manager persona (Will Ray): role, team, tools, learning, collaboration, and an **Activity** log that updates as you use the demo (rehearsals, coach sessions, context reviews).
 
-Rehearsal uses a **server-proxied** Live session (`/live` WebSocket). Other coach voice modes mint **ephemeral tokens** via `POST /api/learning/live-token` so the browser never holds your long-lived API key.
+Coach voice modes (including rehearsal) mint **ephemeral tokens** on the server so the browser never holds your long-lived API key. Local `npm run dev` still supports an optional `/live` WebSocket proxy for debugging.
 
 ## Tech stack
 
@@ -83,11 +83,7 @@ npx vercel --prod
 **What works on Vercel**
 
 - Landing, Team, Settings UI
-- Manager copilot, skill paths, freeform explore (voice via ephemeral tokens + REST APIs)
-
-**What does not work on Vercel**
-
-- **Rehearsal** (`/live` WebSocket) — Vercel serverless functions do not support long-lived WebSockets. Rehearsal needs `npm run dev` locally or a Node host such as Railway, Render, or Fly.
+- Manager copilot, skill paths, freeform explore, and **rehearsal** (voice via ephemeral tokens + REST APIs)
 
 ### Other scripts
 
@@ -119,9 +115,10 @@ All require `GEMINI_API_KEY` on the server.
 | `POST` | `/api/learning/live-token` | Ephemeral token for client Live sessions |
 | `POST` | `/api/learning/generate` | Stream a skill path spec |
 | `POST` | `/api/learning/generate-personalized-path` | Personalized path after intake |
+| `POST` | `/api/rehearse/live-token` | Ephemeral token for rehearsal Live sessions |
 | `POST` | `/api/rehearse/hud-cue` | Live coaching HUD during rehearsal |
 | `POST` | `/api/rehearse/assess` | Post-rehearsal assessment |
-| WebSocket | `/live` | Server-proxied Gemini Live for rehearsal |
+| WebSocket | `/live` | Optional server-proxied Live (local dev with WebSockets only) |
 
 ## Tips
 

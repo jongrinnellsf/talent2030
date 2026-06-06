@@ -31,6 +31,10 @@ import type { SessionMode, TranscriptLine } from "./src/types.ts";
 import { handleLearningGenerate } from "./server/learning/generatePath.ts";
 import { handlePersonalizedPathGenerate } from "./server/learning/generatePersonalizedPath.ts";
 import { createLearnerLiveToken } from "./server/learning/liveToken.ts";
+import {
+  createRehearseLiveToken,
+  parseRehearseLiveTokenRequest,
+} from "./server/learning/rehearseLiveToken.ts";
 
 function parseSessionMode(value: unknown): SessionMode {
   if (typeof value === "string") {
@@ -263,6 +267,39 @@ export async function createApp(options: CreateAppOptions = {}) {
           : undefined;
       res.status(500).json({
         error: "Failed to create voice session token.",
+        ...(detail ? { detail } : {}),
+      });
+    }
+  });
+
+  app.post("/api/rehearse/live-token", async (req, res) => {
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        res.status(503).json({ error: "Gemini API key not configured." });
+        return;
+      }
+
+      const { employeeId, scenarioId } = parseRehearseLiveTokenRequest(req.body ?? {});
+      if (!isValidSessionStart(employeeId, "rehearse")) {
+        res.status(400).json({ error: "Invalid session configuration." });
+        return;
+      }
+
+      const contextSnapshot = resolveContextSnapshot(req.body?.contextSnapshot);
+      const payload = await createRehearseLiveToken(
+        employeeId,
+        scenarioId,
+        contextSnapshot
+      );
+      res.json(payload);
+    } catch (err) {
+      console.error("Rehearse live token failed:", err);
+      const detail =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : undefined;
+      res.status(500).json({
+        error: "Failed to create rehearsal session token.",
         ...(detail ? { detail } : {}),
       });
     }
