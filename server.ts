@@ -627,7 +627,11 @@ export async function createApp(options: CreateAppOptions = {}) {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
+    app.get("*", (req, res) => {
+      if (req.path.startsWith("/assets/")) {
+        res.status(404).type("text/plain").send("Not found");
+        return;
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
