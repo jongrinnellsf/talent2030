@@ -10,6 +10,7 @@ import {
   Route,
   useLocation,
 } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { DemoWorkspace } from "./components/DemoWorkspace";
 import { CoachPage } from "./pages/CoachPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -81,6 +82,7 @@ export default function App() {
           />
         </Routes>
       </AgentContextProvider>
+      <Analytics />
     </BrowserRouter>
   );
 }
