@@ -22,7 +22,6 @@ import type { VoiceSessionRequest } from "../context/LearningSessionContext";
 import { extractWebSearchSources, type WebSearchSource } from "./groundingSources";
 import {
   buildCanvasMissingCoachSpeech,
-  buildCanvasUpdatedCoachSpeech,
   buildPathPassCoachSpeech,
   buildPathReadyCoachSpeech,
   internalToolResponse,
@@ -151,6 +150,7 @@ export default function LiveLearnerApp() {
     takeaway?: string;
   } | null>(null);
   const canvasUpdatedThisTurnRef = useRef(false);
+  const canvasNudgeTimerRef = useRef<number | null>(null);
   const pathKickoffAttemptedRef = useRef<string | null>(null);
   const transcriptRef = useRef(transcript);
   const lastCanvasTopicRef = useRef<string | null>(null);
@@ -191,10 +191,18 @@ export default function LiveLearnerApp() {
     setCoachActivity({ phase: "updating_canvas", message: null });
   }, [setCoachActivity]);
 
+  const cancelCanvasNudge = useCallback(() => {
+    if (canvasNudgeTimerRef.current !== null) {
+      window.clearTimeout(canvasNudgeTimerRef.current);
+      canvasNudgeTimerRef.current = null;
+    }
+  }, []);
+
   const markCoachResponding = useCallback(() => {
     coachResponseStartedRef.current = true;
+    cancelCanvasNudge();
     setCoachActivity({ phase: "idle", message: null });
-  }, [setCoachActivity]);
+  }, [cancelCanvasNudge, setCoachActivity]);
 
   const clearCoachActivity = useCallback(() => {
     coachResponseStartedRef.current = false;
@@ -389,6 +397,7 @@ export default function LiveLearnerApp() {
             if (result.payload.topic) {
               lastCanvasTopicRef.current = result.payload.topic;
             }
+            setCoachActivity({ phase: "idle", message: null });
           }
           return {
             id: call.id,
@@ -396,7 +405,7 @@ export default function LiveLearnerApp() {
             response: {
               output: result.ok
                 ? internalToolResponse(
-                    "Canvas update succeeded. Speak 1–2 sentences out loud confirming what changed. Do not call tools again this turn."
+                    "Canvas update succeeded. If you have not already spoken, one brief acknowledgment out loud—then stop. Do not call update_learning_canvas again this turn."
                   )
                 : internalToolResponse(
                     `Canvas update failed—learner still sees previous content: ${result.error}. Fix the payload and call again.`
@@ -619,18 +628,24 @@ export default function LiveLearnerApp() {
             sendCoachText(buildPathPassCoachSpeech(pendingCompletion.feedback));
           }
         } else if (
-          canvasUpdatedThisTurn &&
-          !coachSpokeThisTurn &&
-          (livePhase === "freeform" || livePhase === "manager_coach")
-        ) {
-          sendCoachText(buildCanvasUpdatedCoachSpeech());
-        } else if (
           (livePhase === "freeform" || livePhase === "manager_coach") &&
           userSpokeThisTurn &&
           !canvasUpdatedThisTurn &&
-          !programmaticTurnRef.current
+          !programmaticTurnRef.current &&
+          !coachSpokeThisTurn
         ) {
-          sendCoachText(buildCanvasMissingCoachSpeech());
+          cancelCanvasNudge();
+          canvasNudgeTimerRef.current = window.setTimeout(() => {
+            canvasNudgeTimerRef.current = null;
+            if (
+              stoppingRef.current ||
+              coachResponseStartedRef.current ||
+              !sessionRef.current
+            ) {
+              return;
+            }
+            sendCoachText(buildCanvasMissingCoachSpeech());
+          }, 1200);
         }
 
         canvasUpdatedThisTurnRef.current = false;
@@ -657,6 +672,7 @@ export default function LiveLearnerApp() {
       markCoachResponding,
       playAudioChunk,
       recordIntakeAnswer,
+      cancelCanvasNudge,
       sendCoachText,
       setCoachActivity,
     ]
@@ -679,6 +695,7 @@ export default function LiveLearnerApp() {
     }
 
     stoppingRef.current = true;
+    cancelCanvasNudge();
     isConnectingRef.current = false;
     setIsConnected(false);
     setIsConnecting(false);
@@ -705,7 +722,7 @@ export default function LiveLearnerApp() {
     audioCtxRef.current = null;
     playbackCtxRef.current = null;
     lastCanvasTopicRef.current = null;
-  }, [clearAudioQueue, clearCoachActivity, logEmployeeActivity, setIsLiveConnected]);
+  }, [cancelCanvasNudge, clearAudioQueue, clearCoachActivity, logEmployeeActivity, setIsLiveConnected]);
 
   useEffect(() => {
     stopLiveLearnerConversationRef.current = stopSession;

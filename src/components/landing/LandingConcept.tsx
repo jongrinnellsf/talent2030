@@ -1,7 +1,15 @@
-const THEMES = [
+import type { ReactNode } from "react";
+
+const THEMES: { title: string; body: ReactNode }[] = [
   {
     title: "Structured context",
-    body: "When AI has useful files on your work (tasks, goals, team, tools), it makes better calls. Talent2030 wires that up through employee.md and talentmanagement.md automatically.",
+    body: (
+      <>
+        When AI has useful files on your work (tasks, goals, team, tools), it makes better
+        calls. Talent2030 wires that up through <code>employee.md</code> and{" "}
+        <code>talentmanagement.md</code> automatically.
+      </>
+    ),
   },
   {
     title: "AI that learns",

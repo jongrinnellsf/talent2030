@@ -1,7 +1,14 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { buildRehearsePath, ROUTES } from "../../routes";
 
-const FEATURES = [
+const FEATURES: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  description: ReactNode;
+  cta: string;
+}[] = [
   {
     href: buildRehearsePath(),
     eyebrow: "Simulations",
@@ -14,11 +21,16 @@ const FEATURES = [
     href: ROUTES.talent.coach,
     eyebrow: "Personalized learning paths",
     title: "Upskill on your terms",
-    description:
-      "A short consultation, then 5 voice-driven slides grounded on the web and your employee ledger. Pause, ask questions, finish with a verbal check that logs to employee.md.",
+    description: (
+      <>
+        A short consultation, then 5 voice-driven slides grounded on the web and your
+        employee ledger. Pause, ask questions, finish with a verbal check that logs to{" "}
+        <code>employee.md</code>.
+      </>
+    ),
     cta: "Start a skill path",
   },
-] as const;
+];
 
 export function LandingFeatures() {
   return (

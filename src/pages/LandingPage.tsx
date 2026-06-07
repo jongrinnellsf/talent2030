@@ -5,8 +5,6 @@ import { LandingConcept } from "../components/landing/LandingConcept";
 import { LandingHeroHeadline } from "../components/landing/LandingHeroHeadline";
 import { LandingContextHub } from "../components/landing/LandingContextHub";
 import { LandingFeatures } from "../components/landing/LandingFeatures";
-import { manager } from "../data/manager";
-import { ORG_NAME } from "../data/agent-context/talentManagementSeed";
 import { ROUTES } from "../routes";
 
 export function LandingPage() {
@@ -17,8 +15,7 @@ export function LandingPage() {
         <LandingHeroHeadline />
         <p className="landing-hero__lead">
           An exploration on what learning and performance could look like at
-          work, built as a live demo. Sign in as {manager.name}, {manager.title} at{" "}
-          {ORG_NAME}: structured context, voice on a canvas, and agentic coaching for performance reviews.
+          work, built as a live demo. 
 
         </p>
         <Link to={ROUTES.talent.root} className="btn-primary landing-hero__cta">
