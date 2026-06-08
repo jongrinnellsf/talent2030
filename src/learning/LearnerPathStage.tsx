@@ -6,7 +6,11 @@ import { useLearningSession } from "../context/LearningSessionContext";
 import { getLearningAsset } from "../data/learning/contentPool";
 import type { LearningSpec } from "./catalog";
 import { PathLoadingSkeleton } from "../components/learning/PathLoadingSkeleton";
-import { SLIDE_BUILD_LOADING_MESSAGES } from "../data/learning/loadingMessages";
+import {
+  CANVAS_UPDATE_LOADING_MESSAGES,
+  SLIDE_BUILD_LOADING_MESSAGES,
+} from "../data/learning/loadingMessages";
+import { CanvasPendingHint } from "./components/CanvasPendingHint";
 import { LearningCanvasChrome } from "./components/LearningCanvasChrome";
 import { PathResearchSourcesTooltip } from "./components/PathResearchSourcesTooltip";
 import { registry } from "./registry";
@@ -15,6 +19,8 @@ type LearnerPathStageProps = {
   spec: LearningSpec;
   loading?: boolean;
   isGenerating?: boolean;
+  canvasPending?: boolean;
+  canvasPendingMessages?: readonly string[];
 };
 
 function getSlideKeys(spec: LearningSpec): string[] {
@@ -53,7 +59,13 @@ function buildSlideSpec(
   };
 }
 
-export function LearnerPathStage({ spec, loading, isGenerating }: LearnerPathStageProps) {
+export function LearnerPathStage({
+  spec,
+  loading,
+  isGenerating,
+  canvasPending = false,
+  canvasPendingMessages,
+}: LearnerPathStageProps) {
   const { beginAssessment, pathResearchSources } = useLearningSession();
   const slideKeys = useMemo(() => getSlideKeys(spec), [spec]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -114,6 +126,14 @@ export function LearnerPathStage({ spec, loading, isGenerating }: LearnerPathSta
       </header>
 
       <div className="learner-path-stage__viewport panel">
+        <CanvasPendingHint
+          active={canvasPending}
+          messages={
+            canvasPending
+              ? (canvasPendingMessages ?? CANVAS_UPDATE_LOADING_MESSAGES)
+              : undefined
+          }
+        />
         <LearningCanvasChrome
           slideIndex={activeSpec ? activeIndex + 1 : undefined}
           slideTotal={activeSpec ? slideKeys.length : undefined}

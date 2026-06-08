@@ -11,12 +11,14 @@ type LearnerLiveCanvasStageProps = {
   updateVersion?: number;
   /** Coach is updating the live canvas (rotating status in the corner). */
   canvasPending?: boolean;
+  canvasPendingMessages?: readonly string[];
 };
 
 function LearnerLiveCanvasStageInner({
   payload,
   updateVersion = 0,
   canvasPending = false,
+  canvasPendingMessages,
 }: LearnerLiveCanvasStageProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +38,11 @@ function LearnerLiveCanvasStageInner({
       <div ref={viewportRef} className="learner-live-canvas-stage__viewport panel">
         <CanvasPendingHint
           active={canvasPending}
-          messages={canvasPending ? CANVAS_UPDATE_LOADING_MESSAGES : undefined}
+          messages={
+            canvasPending
+              ? (canvasPendingMessages ?? CANVAS_UPDATE_LOADING_MESSAGES)
+              : undefined
+          }
         />
         <LearningCanvasChrome>
           <div className="learner-json-render" data-topic={payload.topic}>

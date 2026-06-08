@@ -1,8 +1,10 @@
 import { PathLoadingSkeleton } from "../components/learning/PathLoadingSkeleton";
 import {
   CANVAS_UPDATE_LOADING_MESSAGES,
+  COACH_PROCESSING_LOADING_MESSAGES,
   PATH_GENERATION_LOADING_MESSAGES,
 } from "../data/learning/loadingMessages";
+import type { CoachActivity } from "../context/LearningSessionContext";
 import { TopicPicker } from "../components/learning/TopicPicker";
 import { IntakeStage } from "../components/learning/IntakeStage";
 import { KnowledgeCheckStage } from "../components/learning/KnowledgeCheckStage";
@@ -20,18 +22,36 @@ type LearningCanvasProps = {
   error?: string | null;
 };
 
+function canvasPendingMessages(coachActivity: CoachActivity): readonly string[] {
+  return coachActivity.phase === "updating_canvas"
+    ? CANVAS_UPDATE_LOADING_MESSAGES
+    : COACH_PROCESSING_LOADING_MESSAGES;
+}
+
+function isCanvasPending(
+  isLiveConnected: boolean,
+  coachActivity: CoachActivity
+): boolean {
+  return (
+    isLiveConnected &&
+    (coachActivity.phase === "processing" || coachActivity.phase === "updating_canvas")
+  );
+}
+
 function FreeformEmptyState({
   canvasPending,
+  pendingMessages,
   managerCopilot,
 }: {
   canvasPending: boolean;
+  pendingMessages: readonly string[];
   managerCopilot?: boolean;
 }) {
   return (
     <>
       <CanvasPendingHint
         active={canvasPending}
-        messages={canvasPending ? CANVAS_UPDATE_LOADING_MESSAGES : undefined}
+        messages={canvasPending ? pendingMessages : undefined}
         placement="center"
       />
       <p className="learning-canvas__status">
@@ -53,9 +73,8 @@ export function LearningCanvas({ spec, loading, error }: LearningCanvasProps) {
     coachActivity,
   } = useLearningSession();
 
-  const canvasPending =
-    isLiveConnected &&
-    (coachActivity.phase === "processing" || coachActivity.phase === "updating_canvas");
+  const canvasPending = isCanvasPending(isLiveConnected, coachActivity);
+  const pendingMessages = canvasPendingMessages(coachActivity);
 
   if (error) {
     return (
@@ -90,6 +109,7 @@ export function LearningCanvas({ spec, loading, error }: LearningCanvasProps) {
             payload={liveCanvas}
             updateVersion={canvasUpdateVersion}
             canvasPending={canvasPending}
+            canvasPendingMessages={pendingMessages}
           />
         </div>
       );
@@ -99,6 +119,7 @@ export function LearningCanvas({ spec, loading, error }: LearningCanvasProps) {
       <div className="learning-canvas learning-canvas--empty panel">
         <FreeformEmptyState
           canvasPending={canvasPending}
+          pendingMessages={pendingMessages}
           managerCopilot={phase === "manager_coach"}
         />
       </div>
@@ -121,9 +142,7 @@ export function LearningCanvas({ spec, loading, error }: LearningCanvasProps) {
       <div className="learning-canvas learning-canvas--loading">
         <PathLoadingSkeleton
           messages={
-            canvasPending
-              ? CANVAS_UPDATE_LOADING_MESSAGES
-              : PATH_GENERATION_LOADING_MESSAGES
+            canvasPending ? pendingMessages : PATH_GENERATION_LOADING_MESSAGES
           }
         />
       </div>
@@ -161,7 +180,13 @@ export function LearningCanvas({ spec, loading, error }: LearningCanvasProps) {
           Updating your path…
         </p>
       )}
-      <LearnerPathStage spec={spec} loading={loading} isGenerating={loading} />
+      <LearnerPathStage
+        spec={spec}
+        loading={loading}
+        isGenerating={loading}
+        canvasPending={canvasPending}
+        canvasPendingMessages={pendingMessages}
+      />
     </div>
   );
 }

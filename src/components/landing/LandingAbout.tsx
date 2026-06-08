@@ -18,31 +18,14 @@ export function LandingAbout() {
             drives the experience on a fixed audio-visual canvas: cameras off, low
             latency text that reinforces what you hear.
           </p>
-          <p>
-            I like the word <em>exposition</em>: this is an exposition on agent-first
-            talent work. Managers get planning, hyper-personalized skill paths, and
-            Meet-style rehearsal before a hard review. Learners get 5-slide micro paths
-            with a verbal knowledge check that logs back to the ledger. If the write-up
-            helps,{" "}
-            <a
-              className="landing-about__link"
-              href={PERSONAL_SITE.articleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              read the full article
-            </a>
-            . If it resonated,{" "}
-            <a
-              className="landing-about__link"
-              href={PERSONAL_SITE.linkedInUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              say hi on LinkedIn
-            </a>
-            .
-          </p>
+          <a
+            className="btn-primary landing-about__cta"
+            href={PERSONAL_SITE.articleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Read the deep dive
+          </a>
         </div>
       </div>
     </section>

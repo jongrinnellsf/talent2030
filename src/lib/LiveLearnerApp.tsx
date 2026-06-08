@@ -397,7 +397,6 @@ export default function LiveLearnerApp() {
             if (result.payload.topic) {
               lastCanvasTopicRef.current = result.payload.topic;
             }
-            setCoachActivity({ phase: "idle", message: null });
           }
           return {
             id: call.id,
@@ -655,7 +654,12 @@ export default function LiveLearnerApp() {
           clearCoachActivity();
         } else if (phaseRef.current === "generating") {
           setCoachActivity({ phase: "processing", message: null });
-        } else if (userSpokeThisTurn && phaseRef.current === "freeform") {
+        } else if (
+          userSpokeThisTurn &&
+          (phaseRef.current === "freeform" ||
+            phaseRef.current === "manager_coach" ||
+            phaseRef.current === "path")
+        ) {
           setCoachActivity((prev) =>
             prev.phase === "updating_canvas" ? prev : { phase: "processing", message: null }
           );

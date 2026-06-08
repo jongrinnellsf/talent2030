@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeCanvasWrittenProductNames } from "../data/sessionLanguage";
 import type { LearningSpec } from "./catalog";
 
 const promptItemSchema = z.object({
@@ -227,6 +228,57 @@ function normalizeSectionsRaw(sectionsRaw: unknown): unknown[] {
   return [];
 }
 
+function sanitizeCanvasText(text: string): string {
+  return normalizeCanvasWrittenProductNames(text);
+}
+
+function sanitizeLiveCanvasPayload(payload: LiveCanvasPayload): LiveCanvasPayload {
+  return {
+    ...payload,
+    topic: sanitizeCanvasText(payload.topic),
+    subtitle: payload.subtitle ? sanitizeCanvasText(payload.subtitle) : null,
+    sections: payload.sections.map((section) => {
+      if (section.kind === "text") {
+        return {
+          ...section,
+          heading: section.heading ? sanitizeCanvasText(section.heading) : section.heading,
+          body: sanitizeCanvasText(section.body),
+        };
+      }
+      if (section.kind === "list" || section.kind === "bullets") {
+        return {
+          ...section,
+          heading: section.heading ? sanitizeCanvasText(section.heading) : section.heading,
+          items: section.items.map(sanitizeCanvasText),
+        };
+      }
+      if (section.kind === "prompts") {
+        return {
+          ...section,
+          heading: section.heading ? sanitizeCanvasText(section.heading) : section.heading,
+          prompts: section.prompts.map((p) => ({
+            ...p,
+            title: sanitizeCanvasText(p.title),
+            text: sanitizeCanvasText(p.text),
+            note: p.note ? sanitizeCanvasText(p.note) : p.note,
+          })),
+        };
+      }
+      if (section.kind === "comparison") {
+        return {
+          ...section,
+          heading: section.heading ? sanitizeCanvasText(section.heading) : section.heading,
+          leftTitle: sanitizeCanvasText(section.leftTitle),
+          rightTitle: sanitizeCanvasText(section.rightTitle),
+          leftPoints: section.leftPoints.map(sanitizeCanvasText),
+          rightPoints: section.rightPoints.map(sanitizeCanvasText),
+        };
+      }
+      return section;
+    }),
+  };
+}
+
 /** Parse Live API tool args (loose JSON) into a canvas payload with explicit errors. */
 export function parseLiveCanvasToolArgsWithResult(
   args: unknown
@@ -274,5 +326,5 @@ export function parseLiveCanvasToolArgsWithResult(
     return { ok: false, error: "Sections failed validation after normalization." };
   }
 
-  return { ok: true, payload: validated.data };
+  return { ok: true, payload: sanitizeLiveCanvasPayload(validated.data) };
 }

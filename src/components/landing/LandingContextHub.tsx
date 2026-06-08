@@ -15,8 +15,7 @@ export function LandingContextHub() {
           Your work tools feed one agent
         </h2>
         <p className="landing-context-hub__lead">
-          Signals stack from <code>talentmanagement.md</code> at the top. Each one connects
-          into the agent on its own line. The coach grounds on <code>employee.md</code>, then
+          HR provides <code>talentmanagement.md</code> at the top. IT provisions the tools providing context. The coach grounds on <code>employee.md</code>, then
           outputs manager advice, review simulation, and personalized learning paths.
         </p>
         <Suspense

@@ -5,7 +5,10 @@ import {
   LOADING_MESSAGE_INTERVAL_MS,
 } from "../../data/learning/loadingMessages";
 
-export const CANVAS_PENDING_DELAY_MS = 4000;
+/** Corner chip on a populated canvas — show quickly. */
+export const CANVAS_PENDING_CORNER_DELAY_MS = 400;
+/** Centered whisper on empty canvas — brief debounce to avoid flicker. */
+export const CANVAS_PENDING_CENTER_DELAY_MS = 700;
 
 type CanvasPendingHintProps = {
   active: boolean;
@@ -15,6 +18,8 @@ type CanvasPendingHintProps = {
   rotateIntervalMs?: number;
   /** Corner chip on live canvas; centered whisper on empty canvas. */
   placement?: "corner" | "center";
+  /** Ms before the hint appears (avoids flash on very fast updates). */
+  delayMs?: number;
 };
 
 export function CanvasPendingHint({
@@ -23,6 +28,7 @@ export function CanvasPendingHint({
   messages,
   rotateIntervalMs = LOADING_MESSAGE_INTERVAL_MS,
   placement = "corner",
+  delayMs,
 }: CanvasPendingHintProps) {
   const rotate = Boolean(messages?.length) && active;
   const rotatingText = useRotatingMessage(
@@ -31,7 +37,10 @@ export function CanvasPendingHint({
     rotateIntervalMs
   );
   const displayText = rotate ? rotatingText : message;
-  const show = useDelayedTrue(Boolean(active && displayText), CANVAS_PENDING_DELAY_MS);
+  const resolvedDelay =
+    delayMs ??
+    (placement === "center" ? CANVAS_PENDING_CENTER_DELAY_MS : CANVAS_PENDING_CORNER_DELAY_MS);
+  const show = useDelayedTrue(Boolean(active && displayText), resolvedDelay);
 
   if (!show || !displayText) return null;
 

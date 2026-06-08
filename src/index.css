@@ -5952,14 +5952,13 @@ body {
   color: var(--color-ink);
 }
 
-.landing-about__link {
-  color: var(--color-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.landing-about__link:hover {
-  text-decoration-thickness: 2px;
+.landing-about__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.25rem;
+  padding: 0.75rem 1.25rem;
+  text-decoration: none;
 }
 
 .landing-footer {

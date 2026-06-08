@@ -6,33 +6,41 @@ export const ENGLISH_ONLY_LIVE_RULES = `## Language (required)
 - Never switch to another language, even briefly or for emphasis.
 - If audio is unclear, ask for clarification in English — do not respond in another language.`;
 
+/** Fix TTS pronunciation bleed-through in written canvas copy. */
+export function normalizeCanvasWrittenProductNames(text: string): string {
+  return text
+    .replace(/\bKLAWD\s+KOHD\b/gi, "Claude Code")
+    .replace(/\bKLAWD\s+CODE\b/gi, "Claude Code")
+    .replace(/\bKLAWD\b/gi, "Claude")
+    .replace(/\b[Kk]lawd\s+[Kk]oh?d\b/g, "Claude Code")
+    .replace(/\b[Kk]lawd\s+[Cc]ode\b/g, "Claude Code")
+    .replace(/\b[Kk]lawd\b/g, "Claude");
+}
+
 /** Guides Live API audio output; keep official spellings in canvas/tools. */
-export const SPOKEN_PRONUNCIATION_RULES = `## Spoken pronunciation (CRITICAL — audio only)
+export const SPOKEN_PRONUNCIATION_RULES = `## Claude product name — written vs spoken (CRITICAL)
 
-The TTS model often misreads **Claude** as **"cloud"** (weather). That is **wrong**. Never say "cloud" when you mean the Anthropic product.
+**Written output (canvas, tools, lists, prompts, subtitles):**
+- Always **Claude** and **Claude Code** — official Anthropic spelling only.
+- **Never** write Klawd, klawd, KLAWD, "klawd kohd", or any phonetic spelling on the canvas or in tool payloads.
 
-**Mandatory spoken forms (use these sounds every time in audio):**
-- **Claude** → **"klawd"** (one syllable, rhymes with **flawed**; not **cloud**, not **clode**, not the letter C-L-O-U-D)
-- **Claude Code** → **"klawd kohd"** (two words: **KLAWD** then **KOHD**)
+**Spoken audio only:**
+- The TTS model often misreads **Claude** as **"cloud"** (weather). That is wrong.
+- Say **klawd** (rhymes with flawed) for Claude; **klawd kohd** for Claude Code — audio only, never in written text.
+- If you are about to say "cloud", stop and say **klawd** instead.
 
-**Written output:** canvas, tools, and transcripts keep the official spelling **Claude** / **Claude Code**. Only your **spoken** delivery uses **klawd** / **klawd kohd**.
-
-**Before speaking the product name:** mentally substitute **klawd** (or **klawd kohd**). If you are about to say "cloud", stop and say **klawd** instead.
-
-You may clarify once per session: "Claude—I'm saying klawd, like flawed, not cloud." Do not repeat every turn.`;
+You may clarify once per session in speech: "Claude—I'm saying klawd, like flawed, not cloud." Do not repeat every turn.`;
 
 /** Extra emphasis when the session topic names Claude. */
 export function topicSpokenPronunciationAddendum(topicTitle: string): string {
   if (!/\bclaude\b/i.test(topicTitle)) return "";
   return `## Topic pronunciation (${topicTitle}) — highest priority
 
-This session is about **${topicTitle}**. You will say the product name often in audio.
+This session is about **${topicTitle}**.
 
-- Every spoken **Claude** → **klawd** (KLAWD, rhymes with flawed)
-- Every spoken **Claude Code** → **klawd kohd** (KLAWD KOHD)
-- **Forbidden in audio:** "cloud", "clode", or spelling out C-L-O-U-D like the weather
+**Canvas and tools:** write **Claude** / **Claude Code** only — never Klawd or phonetic spellings.
 
-Keep written **Claude** / **Claude Code** on the canvas; only audio uses klawd / klawd kohd.`;
+**Spoken audio only:** say **klawd** / **klawd kohd** so TTS does not read "cloud". Forbidden in audio: "cloud", "clode".`;
 }
 
 export const GENDER_NEUTRAL_EMPLOYEE_LANGUAGE = `## Employee references (required)
