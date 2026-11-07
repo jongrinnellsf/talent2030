@@ -11,8 +11,7 @@ import {
 } from "../../src/learning/validateSpec.ts";
 import type { LearningSpec } from "../../src/learning/catalog.ts";
 import { voiceDnaPromptBlock } from "../../src/data/skills/voiceStyle.ts";
-
-const GENERATE_MODEL = "gemini-2.5-flash";
+import { GEMINI_TEXT_MODEL } from "../../src/data/liveModel.ts";
 
 function buildAssetCatalogPrompt(search: LearningSearchResult): string {
   const lines = search.hits.map((hit) => {
@@ -35,7 +34,7 @@ function buildGeneratePrompt(goal: string, search: LearningSearchResult): string
       "Mix sources when possible: lms, slack, gmail, meet, drive, calendar, asana, workday.",
       "Every asset slide must use assetId from the allowed list exactly.",
       "Never write quiz questions, survey prompts, or content body text except IntroSlide title/subtitle.",
-      "IntroSlide title and subtitle are learner-visible: write them in the Voice DNA style below.",
+      "IntroSlide title and subtitle are learner-visible: write them in English, in the Voice DNA style below.",
       "children on LearningPath lists slide element keys in order.",
     ],
   });
@@ -81,7 +80,7 @@ async function generateSpec(
   search: LearningSearchResult
 ): Promise<LearningSpec> {
   const response = await ai.models.generateContent({
-    model: GENERATE_MODEL,
+    model: GEMINI_TEXT_MODEL,
     contents: buildGeneratePrompt(goal, search),
     config: {
       responseMimeType: "application/json",

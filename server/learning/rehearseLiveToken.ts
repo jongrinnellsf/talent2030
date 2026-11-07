@@ -1,4 +1,5 @@
-import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Modality } from "@google/genai";
+import { resolveGeminiLiveModel } from "../../src/data/liveModel.ts";
 import {
   buildAgentEmployeeBriefing,
   buildAgentPrompt,
@@ -57,16 +58,17 @@ export async function createRehearseLiveToken(
   const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const newSessionExpireTime = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
+  const liveModel = resolveGeminiLiveModel();
+
   const token = await ai.authTokens.create({
     config: {
       uses: 10,
       expireTime,
       newSessionExpireTime,
       liveConnectConstraints: {
-        model: "gemini-3.1-flash-live-preview",
+        model: liveModel,
         config: {
           responseModalities: [Modality.AUDIO],
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           speechConfig: {
             languageCode: LIVE_SESSION_LANGUAGE,
             voiceConfig: { prebuiltVoiceConfig: { voiceName } },
@@ -88,7 +90,7 @@ export async function createRehearseLiveToken(
   return {
     token: token.name,
     expiresAt: expireTime,
-    model: "gemini-3.1-flash-live-preview",
+    model: liveModel,
     employeeBriefing,
   };
 }

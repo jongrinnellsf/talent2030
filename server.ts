@@ -6,8 +6,8 @@ import {
   LiveServerMessage,
   Modality,
   Session,
-  ThinkingLevel,
 } from "@google/genai";
+import { resolveGeminiLiveModel } from "./src/data/liveModel.ts";
 import { WebSocketServer, WebSocket, RawData } from "ws";
 import {
   buildAgentEmployeeBriefing,
@@ -480,7 +480,6 @@ export async function createApp(options: CreateAppOptions = {}) {
 
         const connectConfig: Parameters<typeof ai.live.connect>[0]["config"] = {
           responseModalities: [Modality.AUDIO],
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           speechConfig: {
             languageCode: LIVE_SESSION_LANGUAGE,
             voiceConfig: {
@@ -499,7 +498,7 @@ export async function createApp(options: CreateAppOptions = {}) {
 
         sessionRef.current = await Promise.race([
           ai.live.connect({
-            model: "gemini-3.1-flash-live-preview",
+            model: resolveGeminiLiveModel(),
             callbacks: {
               onmessage: (message: LiveServerMessage) => {
                 if (clientWs.readyState === WebSocket.OPEN) {

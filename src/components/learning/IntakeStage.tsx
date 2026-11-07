@@ -11,11 +11,11 @@ export function IntakeStage() {
       <h2 className="intake-stage__title">{selectedTopic.title}</h2>
       <p className="intake-stage__lead">
         {isLiveConnected
-          ? "Answer out loud. Your coach will ask three short questions, then build your path."
+          ? "Answer out loud. Your coach will ask two short questions, then build your path."
           : "Connecting voice coach…"}
       </p>
       <div className="intake-stage__progress" aria-label="Personalization progress">
-        {[1, 2, 3].map((step) => (
+        {[1, 2].map((step) => (
           <span
             key={step}
             className={`intake-stage__dot${
@@ -25,7 +25,7 @@ export function IntakeStage() {
         ))}
       </div>
       <p className="intake-stage__meta">
-        Question {Math.min(intakeQuestionsAnswered + 1, 3)} of 3
+        Question {Math.min(intakeQuestionsAnswered + 1, 2)} of 2
       </p>
     </div>
   );

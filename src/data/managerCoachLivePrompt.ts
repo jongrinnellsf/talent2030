@@ -103,7 +103,9 @@ export function buildManagerCoachLiveSystemInstruction(
     ? `\n\n## Session focus (use when their question involves this person)\n\n${focusBlock}`
     : "";
 
-  return `You are a real-time coach for ${manager.name}, ${manager.title} at ${manager.company}.
+  return `${ENGLISH_ONLY_LIVE_RULES}
+
+You are a real-time coach for ${manager.name}, ${manager.title} at ${manager.company}.
 
 ## Session: Manager copilot (Coach tab)
 
@@ -149,9 +151,7 @@ ${SPOKEN_PRONUNCIATION_RULES}
 
 ${voiceDnaPromptBlock("spoken")}
 
-${GENDER_NEUTRAL_EMPLOYEE_LANGUAGE}
-
-${ENGLISH_ONLY_LIVE_RULES}`.trim();
+${GENDER_NEUTRAL_EMPLOYEE_LANGUAGE}`.trim();
 }
 
 export function getManagerCoachLiveTools() {

@@ -1,10 +1,11 @@
-/** BCP-47 code used for Live API speech + transcription hints. */
+/** BCP-47 code used for Live API speech. */
 export const LIVE_SESSION_LANGUAGE = "en-US";
 
 export const ENGLISH_ONLY_LIVE_RULES = `## Language (required)
-- **English only** for the entire session — all spoken dialogue and responses.
-- Never switch to another language, even briefly or for emphasis.
-- If audio is unclear, ask for clarification in English — do not respond in another language.`;
+- English only. Spoken replies, transcripts, canvas text, tool arguments, slides, and questions are English.
+- The learner is speaking English. Interpret their audio as English even when a word is unclear or sounds like another language.
+- Never switch languages, even briefly, for emphasis, or to mirror a misheard phrase.
+- If audio is unclear, ask them to repeat it in English. Do not answer or write in another language.`;
 
 /** Fix TTS pronunciation bleed-through in written canvas copy. */
 export function normalizeCanvasWrittenProductNames(text: string): string {

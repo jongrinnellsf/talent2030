@@ -35,7 +35,7 @@ Coach voice modes (including rehearsal) mint **ephemeral tokens** on the server 
 
 - **Frontend:** React 19, React Router, Vite, Tailwind CSS 4
 - **Backend:** Express + `ws` (dev and production serve the SPA from `dist/`)
-- **AI:** Google Gemini (`@google/genai`) — Live API for voice, Flash for path generation and rehearsal analysis
+- **AI:** Google Gemini (`@google/genai`) — Live API (`gemini-3.8-live`) for voice, Flash for path generation and rehearsal analysis
 - **Canvas:** json-render specs for skill paths; custom polished canvas for copilot/freeform updates
 
 ## Prerequisites
@@ -56,7 +56,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) → **Open the demo** → **Team** or **Coach**. Allow **microphone** (and **camera** for rehearsal) when prompted.
 
-Restart the dev server after changing `.env`. If voice fails, check the terminal for `Gemini API key loaded` and `Gemini Live session ready`.
+Restart the dev server after changing `.env`. Optional: set `GEMINI_LIVE_MODEL` to override the default Live model (`gemini-3.8-live`). If voice fails, check the terminal for `Gemini API key loaded` and `Gemini Live session ready`.
 
 ### Production build
 

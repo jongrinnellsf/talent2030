@@ -1,4 +1,4 @@
-import { Type, type FunctionDeclaration } from "@google/genai";
+import { Behavior, Type, type FunctionDeclaration } from "@google/genai";
 import { ORG_NAME } from "./agent-context/talentManagementSeed";
 import { buildLearnerEmployeeContextSection } from "./agent-context/learningEmployeeContext";
 import type { LiveCoachPhase } from "./learning/learningSessionTypes";
@@ -41,6 +41,8 @@ The learner sees ONE canvas that you update as the conversation moves—like a l
 - kind "bullets": heading optional, items[] — disc bullet list for key ideas, steps, or takeaways (3–6 items).
 - kind "prompts": heading optional, prompts[{ title, text, note? }] — copy-ready prompt cards
 - kind "comparison": leftTitle, rightTitle, leftPoints[], rightPoints[] — two-column cards; each side must be 2–5 bullet strings (e.g. training vs inference, Cursor vs ChatGPT)
+- kind "figure": variant is flow, stack, or compare, plus a caption. Use for a simple diagram. Do not invent image URLs.
+- kind "details": heading optional, details[{ title, body }] — extra explanation the learner can open. Keep the main point in another section.
 
 ## Google Search (enabled for this session)
 - You have **Google Search** for up-to-date facts (LLM models, product releases, news, benchmarks). Do not answer "current" or "top" lists from memory alone when search can refresh them.
@@ -60,14 +62,13 @@ function buildIntakePrompt(topicTitle: string, employeeMd?: string): string {
 ## Current phase: INTAKE (personalization only — not teaching)
 The learner chose the path: **${topicTitle}**.
 ${profileSection}
-Your job is a **short intake** (three topics below), then build a personalized 5-slide path. This is a conversation, not a rigid survey.
+Your job is a **short intake** (two topics below), then build a personalized 5-slide path. This is a conversation, not a rigid survey.
 
-### Three topics you must learn (order flexible)
-Collect answers for all three before **finalize_intake**. Each topic can be covered by a direct question **or** by what the learner already said—do not repeat yourself.
+### Two topics you must learn (order flexible)
+Collect answers for both before **finalize_intake**. Each topic can be covered by a direct question **or** by what the learner already said—do not repeat yourself.
 
 1. **Prior knowledge** — what they already know about **${topicTitle}** (and related tools if they name them)
 2. **Goals** — what they want to get out of this path for their work
-3. **Depth** — overview vs hands-on, conceptual vs job-ready
 
 ### Profile context (employee.md — do not lead with it)
 - You may have learner profile text below. Treat it as **background for path building**, not material for your opening line.
@@ -79,28 +80,28 @@ Collect answers for all three before **finalize_intake**. Each topic can be cove
 - If they ask to compare **${topicTitle}** with another tool (e.g. Cursor vs Claude Code), treat that as valid prior knowledge **and** goals—do not block them to finish a scripted question.
 
 Examples:
-- Learner: "Can we just get into the differences between Claude Code and Cursor?" → "Got it—starting from zero on Claude Code and you want a Claude vs Cursor angle. Quick one: do you want a high-level comparison or hands-on workflow differences?" (covers prior + depth; then one more gap if needed)
+- Learner: "Can we just get into the differences between Claude Code and Cursor?" → "Got it—starting from zero on Claude Code and you want a Claude vs Cursor angle." (covers prior knowledge and goals; then finalize if both are clear)
 - Topic is Claude Code → ask about Claude Code first; do not open with their executive title or company strategy unless they bring it up.
 
 Rules:
 - Ask **one question at a time**. Wait for their spoken answer before the next.
-- You need **three topics covered**, not necessarily three identical scripted questions.
-- If their first message already covers all three topics clearly, acknowledge what you heard and call **finalize_intake**—do not ask redundant scripted questions.
+- You need **both topics covered**, not necessarily two identical scripted questions.
+- Call **finalize_intake** only after the learner has **spoken** to both topics (prior knowledge and goals). Menu selection, system kickoff, or employee.md alone never counts as an answer.
+- If one long answer clearly covers both topics, you may finalize after that—still require **spoken** content from the learner, not profile inference.
 - **Do not** teach ${topicTitle} during intake. Canvas stays empty until the path is built.
-- **No canvas tools** in this phase. Only **finalize_intake** after all three topics are covered.
+- **No canvas tools** in this phase. Only **finalize_intake** after both topics are covered.
 
 ### finalize_intake
-After all **three** answers, call **finalize_intake** with:
+After **both** answers, call **finalize_intake** with:
 - **answer1** — prior knowledge (what they said; add brief profile context only if they did not cover something important for the path)
 - **answer2** — goals (what they said; same rule for profile)
-- **answer3** — depth preference (what they said; same rule for profile)
 - **summary** — one sentence on how to personalize their path (for the generator, not to read aloud)
 Then say briefly you're building their path in your own words—one short line only. Do not repeat or read the finalize_intake tool response.
 
 ### Opening the intake (critical)
 The learner **just picked this path** from the menu. They have **not** answered intake questions yet.
 
-If their first message is only that they selected **${topicTitle}** (or a system note to begin intake), they are **not** giving you prior knowledge, goals, or depth yet.
+If their first message is only that they selected **${topicTitle}** (or a system note to begin intake), they are **not** giving you prior knowledge or goals yet.
 
 **Do NOT** reply as if they answered you:
 - Avoid: "Sounds good," "Great," "Perfect," "Got it," "Okay, thanks," or other acknowledgement-of-answer openers.
@@ -109,7 +110,7 @@ If their first message is only that they selected **${topicTitle}** (or a system
 **Good opener shape (adapt naturally):**
 - "Let's get into **${topicTitle}**. I'll ask a few quick questions so we can build your path—first, what do you already know about **${topicTitle}**?"
 
-**First reply:** One short framing line that you're starting **${topicTitle}**, then **question 1 only** about prior knowledge. Do NOT cite employee.md, job title, or goals from file. Do NOT ask questions 2 or 3 yet.`;
+**First reply:** One short framing line that you're starting **${topicTitle}**, then **question 1 only** about prior knowledge. Do NOT cite employee.md, job title, or goals from file. Do NOT ask question 2 yet.`;
 }
 
 function buildPathPrompt(topicTitle: string): string {
@@ -140,7 +141,7 @@ This path has **exactly 5 slides**—no more, no less. After slide 5 comes one k
 - Do **not** call canvas or path tools. Do not regenerate the path.
 - You may clarify or correct slide content using search when needed for accuracy.
 - Do **not** suggest moving on to another section or more lessons.
-- When they reach slide 5, the knowledge check appears on screen—do not start teaching new material.`;
+- When they reach the last slide, a multiple-choice knowledge check appears on screen. Do not ask them to answer out loud. Do not name the correct choice.`;
 }
 
 /** Nudge when the model updated the canvas but did not speak in that turn. */
@@ -179,33 +180,21 @@ export function buildPathReadyCoachSpeech(topicTitle: string): string {
   ].join(" ");
 }
 
-function buildAssessmentPrompt(topicTitle: string, question: string, evaluationHints: string): string {
+function buildAssessmentPrompt(topicTitle: string, question: string): string {
   return `${SHARED_RULES}
 
 ## Current phase: ASSESSMENT (final step — course ends here)
-The learner finished all 5 slides for **${topicTitle}**. This is the **last step**. There is no content after this.
+The learner finished the slides for **${topicTitle}**. A multiple-choice knowledge check is on screen.
 
-Knowledge check question (visible on screen): "${question}"
-
-Evaluation guidance (never read aloud or reveal to the learner):
-${evaluationHints}
+Question (visible on screen): "${question}"
 
 CRITICAL rules:
-- Read the knowledge check question aloud, then listen for their spoken answer.
-- Evaluate against the guidance. Give concise verbal feedback.
-- Do **not** read the expected answer verbatim.
-- When the learner's answer is **correct or good enough**:
-  1. **Speak first** — congratulate them out loud in 1–2 sentences (what they got right).
-  2. **Then** call **complete_path** in the **same turn** with:
-  - \`feedback\`: the same praise (shown on the completion screen)
-  - \`takeaway\`: one crisp sentence—the core lesson from this path they should remember weeks from now (not praise; the insight itself)
-- Use the **complete_path tool only**—never say or write the function name, JSON, or \`complete_path{...}\` out loud; learners must not hear tool syntax.
-- Never call complete_path before your spoken congratulations in that turn.
-- Never mix pass praise with retry coaching in the same turn.
-- After calling complete_path, you may add one short spoken line if needed (e.g. "You're all set—path complete."). Then stop—no new questions, re-evaluation, or extra teaching.
-- After complete_path, the course is **done**. Do NOT ask about a "next section" or offer more lessons.
-- Never say "ready to move on" or "let's dive into" anything after they pass.
-- If the answer is wrong or incomplete, coach them to try again—do **not** call complete_path yet.`;
+- Invite them in one short sentence to select an answer on screen.
+- Do **not** ask them to answer out loud.
+- Do **not** name, hint at, or read the correct choice.
+- Do **not** call tools. The screen grades the selection.
+- If they ask what a choice means, clarify without revealing which one is correct.
+- After they pass, the course is **done**. Do NOT ask about a "next section" or offer more lessons.`;
 }
 
 export type LearnerLivePromptOptions = {
@@ -214,7 +203,6 @@ export type LearnerLivePromptOptions = {
   employeeMd?: string;
   knowledgeCheck?: {
     question: string;
-    evaluationHints: string;
   };
 };
 
@@ -236,8 +224,7 @@ export function buildLearnerLiveSystemInstruction(options?: LearnerLivePromptOpt
   } else if (phase === "assessment" && options?.knowledgeCheck) {
     core = buildAssessmentPrompt(
       topicTitle,
-      options.knowledgeCheck.question,
-      options.knowledgeCheck.evaluationHints
+      options.knowledgeCheck.question
     );
   } else {
     core = buildIntakePrompt(topicTitle, employeeMd);
@@ -246,11 +233,11 @@ export function buildLearnerLiveSystemInstruction(options?: LearnerLivePromptOpt
   const topicPronunciation = topicSpokenPronunciationAddendum(topicTitle);
 
   return [
+    ENGLISH_ONLY_LIVE_RULES,
     SPOKEN_PRONUNCIATION_RULES,
     topicPronunciation,
     core,
     voiceDnaPromptBlock("spoken"),
-    ENGLISH_ONLY_LIVE_RULES,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -258,8 +245,9 @@ export function buildLearnerLiveSystemInstruction(options?: LearnerLivePromptOpt
 
 export const FINALIZE_INTAKE_DECLARATION: FunctionDeclaration = {
   name: "finalize_intake",
+  behavior: Behavior.BLOCKING,
   description:
-    "Call after the learner has answered all three personalization questions. Triggers path generation.",
+    "Call after the learner has answered both personalization questions. Triggers path generation.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -273,24 +261,20 @@ export const FINALIZE_INTAKE_DECLARATION: FunctionDeclaration = {
         description:
           "Goals for this path—primarily what the learner said; optional brief profile context for generation.",
       },
-      answer3: {
-        type: Type.STRING,
-        description:
-          "Preferred depth and format—primarily what the learner said; optional brief profile context for generation.",
-      },
       summary: {
         type: Type.STRING,
         description: "One-sentence summary of how to personalize their path.",
       },
     },
-    required: ["answer1", "answer2", "answer3", "summary"],
+    required: ["answer1", "answer2", "summary"],
   },
 };
 
 export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
   name: "update_learning_canvas",
+  behavior: Behavior.BLOCKING,
   description:
-    "Replace the learner canvas with content for their current question. Call frequently as the conversation evolves.",
+    "Replace the learner canvas with content for their current question. Call frequently as the conversation evolves. Every string must be English.",
   parameters: {
     type: Type.OBJECT,
     properties: {
@@ -310,7 +294,8 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
           properties: {
             kind: {
               type: Type.STRING,
-              description: "text | list | bullets | prompts | comparison",
+              description:
+                "text | list | bullets | prompts | comparison | figure | details",
             },
             heading: { type: Type.STRING },
             body: { type: Type.STRING },
@@ -339,6 +324,26 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
             rightPoints: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
+            },
+            variant: {
+              type: Type.STRING,
+              description: "For kind figure only: flow, stack, or compare.",
+            },
+            caption: {
+              type: Type.STRING,
+              description: "For kind figure only. One sentence under the diagram.",
+            },
+            details: {
+              type: Type.ARRAY,
+              description: "For kind details only. Each item is { title, body }.",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  body: { type: Type.STRING },
+                },
+                required: ["title", "body"],
+              },
             },
           },
           required: ["kind"],
@@ -373,6 +378,7 @@ export const BUILD_LEARNING_PATH_DECLARATION: FunctionDeclaration = {
 
 export const COMPLETE_PATH_DECLARATION: FunctionDeclaration = {
   name: "complete_path",
+  behavior: Behavior.BLOCKING,
   description:
     "REQUIRED when the learner passes the knowledge check. Call immediately in the same turn as your pass feedback. The course ends—no more content after this.",
   parameters: {

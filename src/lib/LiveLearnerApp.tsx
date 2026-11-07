@@ -26,6 +26,7 @@ import {
   buildPathReadyCoachSpeech,
   internalToolResponse,
 } from "../data/learnerLivePrompt";
+import { GEMINI_LIVE_MODEL } from "../data/liveModel";
 import { coachMessageIndicatesPass } from "./detectAssessmentPass";
 import { mergeStreamingTranscript, polishFinishedTranscript } from "./transcriptMerge";
 import {
@@ -41,11 +42,11 @@ function coachHintForPhase(phase: string): string {
     case "freeform":
       return "Talk naturally. The canvas updates as you go.";
     case "intake":
-      return "Answer out loud. Three tailored questions using your profile.";
+      return "Answer out loud. Two short questions, then your path.";
     case "path":
       return "Advance slides on the canvas. Ask anything—coach can search the web for current facts.";
     case "assessment":
-      return "Answer the knowledge check out loud.";
+      return "Select the best answer on the canvas.";
     case "generating":
       return "Researching sources and building your path…";
     case "complete":
@@ -57,7 +58,8 @@ function coachHintForPhase(phase: string): string {
 
 function buildReconnectRequest(
   phase: string,
-  selectedTopic: { title: string } | null
+  selectedTopic: { title: string } | null,
+  knowledgeCheckQuestion?: string
 ): VoiceSessionRequest {
   if (phase === "manager_coach") {
     return { livePhase: "manager_coach" };
@@ -72,7 +74,11 @@ function buildReconnectRequest(
     return {
       topicTitle: selectedTopic.title,
       livePhase: "assessment",
-      kickoffText: "I'm ready for the knowledge check.",
+      ...(knowledgeCheckQuestion
+        ? { knowledgeCheck: { question: knowledgeCheckQuestion } }
+        : {}),
+      kickoffText:
+        "The knowledge check is on screen as multiple choice. Invite me to select an answer. Do not ask me to answer out loud, and do not name the correct choice.",
     };
   }
   if (phase === "path") {
@@ -106,6 +112,7 @@ export default function LiveLearnerApp() {
     stopLiveLearnerConversationRef,
     recordIntakeAnswer,
     selectedTopic,
+    knowledgeCheck,
     spec,
     startFreeform,
     managerCoachFocusEmployeeId,
@@ -133,6 +140,7 @@ export default function LiveLearnerApp() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const stoppingRef = useRef(false);
+  const closeReasonRef = useRef<string | null>(null);
   const isConnectingRef = useRef(false);
   const isMicActiveRef = useRef(isMicActive);
   const phaseRef = useRef(phase);
@@ -167,8 +175,10 @@ export default function LiveLearnerApp() {
     const trimmed = text.trim();
     if (!trimmed) return;
     programmaticTurnRef.current = true;
-    session.sendRealtimeInput({ text: trimmed });
-    session.sendRealtimeInput({ audioStreamEnd: true });
+    session.sendClientContent({
+      turns: [{ role: "user", parts: [{ text: trimmed }] }],
+      turnComplete: true,
+    });
   }, []);
 
   const sendCoachText = useCallback(
@@ -187,16 +197,17 @@ export default function LiveLearnerApp() {
     };
   }, [sendCoachText, sendCoachTextRef]);
 
-  const beginCanvasUpdate = useCallback(() => {
-    setCoachActivity({ phase: "updating_canvas", message: null });
-  }, [setCoachActivity]);
-
   const cancelCanvasNudge = useCallback(() => {
     if (canvasNudgeTimerRef.current !== null) {
       window.clearTimeout(canvasNudgeTimerRef.current);
       canvasNudgeTimerRef.current = null;
     }
   }, []);
+
+  const beginCanvasUpdate = useCallback(() => {
+    cancelCanvasNudge();
+    setCoachActivity({ phase: "updating_canvas", message: null });
+  }, [cancelCanvasNudge, setCoachActivity]);
 
   const markCoachResponding = useCallback(() => {
     coachResponseStartedRef.current = true;
@@ -323,32 +334,35 @@ export default function LiveLearnerApp() {
       if (last?.role === "user" && !last.isFinished) {
         const merged = mergeStreamingTranscript(last.text, text);
         const isFinished = Boolean(turnComplete);
+        const finishedText = isFinished ? polishFinishedTranscript(merged) : merged;
         return [
           ...prev.slice(0, -1),
           {
             role: "user",
-            text: isFinished ? polishFinishedTranscript(merged) : merged,
+            text: finishedText,
             isFinished,
           },
         ];
       }
       if (text) {
         const isFinished = Boolean(turnComplete);
+        const finishedText = isFinished ? polishFinishedTranscript(text) : text;
         return [
           ...prev,
           {
             role: "user",
-            text: isFinished ? polishFinishedTranscript(text) : text,
+            text: finishedText,
             isFinished,
           },
         ];
       }
       if (turnComplete && last?.role === "user" && !last.isFinished) {
+        const finishedText = polishFinishedTranscript(last.text);
         return [
           ...prev.slice(0, -1),
           {
             ...last,
-            text: polishFinishedTranscript(last.text),
+            text: finishedText,
             isFinished: true,
           },
         ];
@@ -358,7 +372,7 @@ export default function LiveLearnerApp() {
   }, []);
 
   const handleToolCalls = useCallback(
-    (message: LiveServerMessage) => {
+    async (message: LiveServerMessage) => {
       const toolCall = message.toolCall;
       const session = sessionRef.current;
       if (!toolCall?.functionCalls?.length || !session) return;
@@ -375,13 +389,15 @@ export default function LiveLearnerApp() {
         beginCanvasUpdate();
       }
 
-      const functionResponses = toolCall.functionCalls.map((call) => {
+      const functionResponses = [];
+
+      for (const call of toolCall.functionCalls) {
         const name = call.name ?? "";
         const args = call.args ?? {};
 
         if (name === "update_learning_canvas") {
           if (!isCanvasPhase) {
-            return {
+            functionResponses.push({
               id: call.id,
               name,
               response: {
@@ -389,16 +405,19 @@ export default function LiveLearnerApp() {
                   "Canvas updates are disabled during structured path mode."
                 ),
               },
-            };
+            });
+            continue;
           }
+
           const result = applyLiveCanvas(args);
+
           if (result.ok) {
             canvasUpdatedThisTurnRef.current = true;
             if (result.payload.topic) {
               lastCanvasTopicRef.current = result.payload.topic;
             }
           }
-          return {
+          functionResponses.push({
             id: call.id,
             name,
             response: {
@@ -410,23 +429,25 @@ export default function LiveLearnerApp() {
                     `Canvas update failed—learner still sees previous content: ${result.error}. Fix the payload and call again.`
                   ),
             },
-          };
+          });
+          continue;
         }
 
         if (name === "build_learning_path") {
           if (livePhase !== "freeform") {
-            return {
+            functionResponses.push({
               id: call.id,
               name,
               response: {
                 output: internalToolResponse("Tool disabled in structured path mode."),
               },
-            };
+            });
+            continue;
           }
           const pathGoal =
             typeof args.goal === "string" && args.goal.trim() ? args.goal.trim() : goal;
           deferredPaths.push(pathGoal);
-          return {
+          functionResponses.push({
             id: call.id,
             name,
             response: {
@@ -434,39 +455,41 @@ export default function LiveLearnerApp() {
                 "Use update_learning_canvas with kind prompts for examples—not build_learning_path."
               ),
             },
-          };
+          });
+          continue;
         }
 
         if (name === "finalize_intake") {
           if (sessionLivePhaseRef.current !== "intake") {
-            return {
+            functionResponses.push({
               id: call.id,
               name,
               response: {
                 output: internalToolResponse("Intake already complete."),
               },
-            };
+            });
+            continue;
           }
 
           const answer1 = typeof args.answer1 === "string" ? args.answer1.trim() : "";
           const answer2 = typeof args.answer2 === "string" ? args.answer2.trim() : "";
-          const answer3 = typeof args.answer3 === "string" ? args.answer3.trim() : "";
           const summary = typeof args.summary === "string" ? args.summary.trim() : "";
 
-          if (!answer1 || !answer2 || !answer3 || !summary) {
-            return {
+          if (!answer1 || !answer2 || !summary) {
+            functionResponses.push({
               id: call.id,
               name,
               response: {
                 output: internalToolResponse(
-                  "Missing answers or summary. Ask the learner for what is still missing—do not call finalize_intake again until you have all three topics."
+                  "Missing answers or summary. Ask the learner for what is still missing—do not call finalize_intake again until you have both topics."
                 ),
               },
-            };
+            });
+            continue;
           }
 
           const payload: PersonalizationContext = {
-            answers: [answer1, answer2, answer3],
+            answers: [answer1, answer2],
             summary,
           };
 
@@ -479,7 +502,7 @@ export default function LiveLearnerApp() {
 
           void generatePersonalizedPath(payload);
 
-          return {
+          functionResponses.push({
             id: call.id,
             name,
             response: {
@@ -487,18 +510,20 @@ export default function LiveLearnerApp() {
                 "Intake saved; personalized path is generating off-screen (canvas empty until ready). If you already told them you are building their path, stop speaking for this turn—do not repeat this message."
               ),
             },
-          };
+          });
+          continue;
         }
 
         if (name === "complete_path") {
           if (phaseRef.current !== "assessment") {
-            return {
+            functionResponses.push({
               id: call.id,
               name,
               response: {
                 output: internalToolResponse("Knowledge check is not active."),
               },
-            };
+            });
+            continue;
           }
 
           const feedback =
@@ -511,7 +536,7 @@ export default function LiveLearnerApp() {
           completePathHandledRef.current = true;
           pendingPathCompletionRef.current = { feedback, takeaway };
 
-          return {
+          functionResponses.push({
             id: call.id,
             name,
             response: {
@@ -519,15 +544,16 @@ export default function LiveLearnerApp() {
                 "Pass recorded. Congratulate the learner out loud in this turn if you have not yet. Completion screen appears when this turn ends. Then stop."
               ),
             },
-          };
+          });
+          continue;
         }
 
-        return {
+        functionResponses.push({
           id: call.id,
           name,
           response: { error: `Unknown function: ${name}` },
-        };
-      });
+        });
+      }
 
       session.sendToolResponse({ functionResponses });
 
@@ -639,6 +665,7 @@ export default function LiveLearnerApp() {
             if (
               stoppingRef.current ||
               coachResponseStartedRef.current ||
+              canvasUpdatedThisTurnRef.current ||
               !sessionRef.current
             ) {
               return;
@@ -804,15 +831,24 @@ export default function LiveLearnerApp() {
         });
 
         const session = await ai.live.connect({
-          model: model ?? "gemini-3.1-flash-live-preview",
+          model: model ?? GEMINI_LIVE_MODEL,
           callbacks: {
             onmessage: handleMessage,
             onerror: (e) => {
               console.error("Learner live error", e);
-              setConnectionError("Voice session error. Try reconnecting.");
             },
-            onclose: () => {
-              if (!stoppingRef.current) stopSession();
+            onclose: (event) => {
+              const reason = event.reason?.trim();
+              if (reason) closeReasonRef.current = reason;
+              const buildingPath = phaseRef.current === "generating";
+              if (!stoppingRef.current) {
+                stopSession();
+                if (buildingPath) {
+                  setConnectionError("Voice paused while your path is building.");
+                } else if (reason) {
+                  setConnectionError(reason);
+                }
+              }
             },
           },
         });
@@ -839,12 +875,16 @@ export default function LiveLearnerApp() {
           const input = e.inputBuffer.getChannelData(0);
           const resampled = resampleToRate(input, audioCtx.sampleRate, LIVE_INPUT_SAMPLE_RATE);
           const pcm = encodePcmToBuffer(resampled);
-          sessionRef.current.sendRealtimeInput({
-            audio: {
-              data: bufferToBase64(pcm),
-              mimeType: `audio/pcm;rate=${LIVE_INPUT_SAMPLE_RATE}`,
-            },
-          });
+          try {
+            sessionRef.current.sendRealtimeInput({
+              audio: {
+                data: bufferToBase64(pcm),
+                mimeType: `audio/pcm;rate=${LIVE_INPUT_SAMPLE_RATE}`,
+              },
+            });
+          } catch {
+            // Socket can close between the mic callback and send.
+          }
         };
 
         setIsConnected(true);
@@ -865,12 +905,14 @@ export default function LiveLearnerApp() {
         }
       } catch (err) {
         console.error(err);
-        setConnectionError(
-          err instanceof Error ? err.message : "Could not start voice session."
-        );
+        const message =
+          closeReasonRef.current ||
+          (err instanceof Error ? err.message : "Could not start voice session.");
+        closeReasonRef.current = null;
         stopSession();
         setIsConnecting(false);
         isConnectingRef.current = false;
+        setConnectionError(message);
       }
     },
     [
@@ -886,6 +928,20 @@ export default function LiveLearnerApp() {
   );
 
   useEffect(() => () => stopSession(), [stopSession]);
+
+  useEffect(() => {
+    if (!isConnected || phase !== "generating") return;
+    const id = window.setInterval(() => {
+      const session = sessionRef.current;
+      if (!session || stoppingRef.current) return;
+      try {
+        session.sendClientContent({ turnComplete: false });
+      } catch {
+        // Socket can close while the path is still generating.
+      }
+    }, 10_000);
+    return () => window.clearInterval(id);
+  }, [isConnected, phase]);
 
   useEffect(() => {
     if (phase === "rehearse" && (isConnected || isConnecting)) {
@@ -972,7 +1028,9 @@ export default function LiveLearnerApp() {
       void startSession({ livePhase: "freeform" });
       return;
     }
-    void startSession(buildReconnectRequest(phase, selectedTopic));
+    void startSession(
+      buildReconnectRequest(phase, selectedTopic, knowledgeCheck?.question)
+    );
   };
 
   if (phase === "rehearse") {

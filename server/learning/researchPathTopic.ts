@@ -1,7 +1,6 @@
 import type { GoogleGenAI } from "@google/genai";
 import { extractWebSearchSources } from "../../src/lib/groundingSources.ts";
-
-const RESEARCH_MODEL = "gemini-2.5-flash";
+import { GEMINI_TEXT_MODEL } from "../../src/data/liveModel.ts";
 
 function buildResearchPrompt(
   topicTitle: string,
@@ -15,7 +14,6 @@ Use **Google Search** to gather **current, accurate** information (product capab
 Learner intake (use to focus research, not to skip search):
 - Prior knowledge: ${answers[0] || "(not provided)"}
 - Goals: ${answers[1] || "(not provided)"}
-- Depth preference: ${answers[2] || "(not provided)"}
 - Summary: ${summary || "(not provided)"}
 
 Return concise research notes (bullet lists OK, max ~600 words) that a course author will turn into 4 teaching slides. Include:
@@ -24,7 +22,7 @@ Return concise research notes (bullet lists OK, max ~600 words) that a course au
 - Common misconceptions to correct
 - 1–2 practical tips grounded in current docs
 
-Mark anything time-sensitive (e.g. "as of search date"). Do not output JSON.`;
+Mark anything time-sensitive (e.g. "as of search date"). Write the notes in English. Do not output JSON.`;
 }
 
 export type PathTopicResearch = {
@@ -36,14 +34,18 @@ export async function researchPathTopic(
   ai: GoogleGenAI,
   topicTitle: string,
   answers: string[],
-  summary: string
+  summary: string,
+  timeoutMs = 12_000
 ): Promise<PathTopicResearch> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await ai.models.generateContent({
-      model: RESEARCH_MODEL,
+      model: GEMINI_TEXT_MODEL,
       contents: buildResearchPrompt(topicTitle, answers, summary),
       config: {
         tools: [{ googleSearch: {} }],
+        abortSignal: controller.signal,
       },
     });
 
@@ -60,5 +62,7 @@ export async function researchPathTopic(
   } catch (err) {
     console.warn("[learning] Path topic web research failed:", err);
     return { notes: "", sources: [] };
+  } finally {
+    clearTimeout(timer);
   }
 }

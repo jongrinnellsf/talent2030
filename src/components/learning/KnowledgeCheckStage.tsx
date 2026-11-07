@@ -1,8 +1,9 @@
 import { useLearningSession } from "../../context/LearningSessionContext";
 import { renderLearningInline } from "../../lib/renderInlineMarkdown";
+import { ChoiceList } from "../../learning/components/canvasBlocks";
 
 export function KnowledgeCheckStage() {
-  const { knowledgeCheck, selectedTopic } = useLearningSession();
+  const { knowledgeCheck, selectedTopic, markPathComplete } = useLearningSession();
 
   if (!knowledgeCheck) return null;
 
@@ -21,9 +22,16 @@ export function KnowledgeCheckStage() {
         </p>
       </div>
 
-      <p className="knowledge-check-stage__hint">
-        Answer out loud. Your coach is listening and will give you feedback.
-      </p>
+      <ChoiceList
+        choices={[...knowledgeCheck.choices]}
+        correctIndex={knowledgeCheck.correctIndex}
+        onCorrect={(choice) =>
+          markPathComplete(
+            "You selected the right answer.",
+            knowledgeCheck.explanation || choice
+          )
+        }
+      />
     </div>
   );
 }

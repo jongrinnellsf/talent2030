@@ -86,7 +86,7 @@ export function TopicPicker({ onSelect }: TopicPickerProps) {
             Guided skill paths
           </h3>
           <p className="topic-picker__section-lead">
-            Three quick voice questions, then a personalized five-slide course.
+            Two quick voice questions, then a personalized five-slide course.
           </p>
         </div>
 

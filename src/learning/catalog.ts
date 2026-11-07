@@ -14,6 +14,87 @@ export const learningCatalog = defineCatalog(schema, {
     Grid: shadcnComponentDefinitions.Grid,
     Table: shadcnComponentDefinitions.Table,
     Alert: shadcnComponentDefinitions.Alert,
+    Canvas: {
+      props: z.object({
+        title: z.string(),
+        subtitle: z.string().nullable().optional(),
+      }),
+      description: "Freeform canvas frame. Children are the sections, in order.",
+      slots: ["default"],
+    },
+    Callout: {
+      props: z.object({
+        label: z.string().nullable().optional(),
+        body: z.string(),
+      }),
+      description: "Short highlighted insight.",
+    },
+    TextBlock: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        body: z.string(),
+      }),
+      description: "Heading plus a paragraph.",
+    },
+    BulletList: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        items: z.array(z.string()),
+      }),
+      description: "Disc list of short points.",
+    },
+    Steps: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        items: z.array(z.string()),
+      }),
+      description: "Numbered steps. Do not prefix items with 1. or 2.",
+    },
+    Compare: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        leftTitle: z.string(),
+        rightTitle: z.string(),
+        leftPoints: z.array(z.string()),
+        rightPoints: z.array(z.string()),
+      }),
+      description: "Two-column comparison.",
+    },
+    PromptList: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        prompts: z.array(
+          z.object({
+            title: z.string(),
+            text: z.string(),
+            note: z.string().nullable().optional(),
+          })
+        ),
+      }),
+      description: "Copy-ready prompt cards.",
+    },
+    Figure: {
+      props: z.object({
+        variant: z.enum(["flow", "stack", "compare"]),
+        caption: z.string().nullable().optional(),
+      }),
+      description:
+        "Built-in diagram. variant is flow, stack, or compare. No image URLs.",
+    },
+    Accordion: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        items: z.array(z.object({ title: z.string(), body: z.string() })),
+      }),
+      description: "Expandable extra detail. The learner opens one item at a time.",
+    },
+    Choice: {
+      props: z.object({
+        choices: z.array(z.string()).length(4),
+        correctIndex: z.number().int().min(0).max(3),
+      }),
+      description: "Multiple choice. correctIndex is not shown to the learner.",
+    },
     LearningPath: {
       props: z.object({
         title: z.string().nullable().optional(),
@@ -66,11 +147,12 @@ export const learningCatalog = defineCatalog(schema, {
     KnowledgeCheckSlide: {
       props: z.object({
         question: z.string(),
-        expectedAnswer: z.string(),
-        evaluationHints: z.string(),
+        choices: z.array(z.string()).length(4),
+        correctIndex: z.number().int().min(0).max(3),
+        explanation: z.string().nullable().optional(),
       }),
       description:
-        "End-of-path knowledge check. Question is shown to learner; expectedAnswer and evaluationHints are coach-only.",
+        "Multiple-choice knowledge check. The learner selects one choice. correctIndex is the correct option and must not be labeled in the question.",
     },
   },
   actions: {},

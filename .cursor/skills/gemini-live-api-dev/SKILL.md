@@ -15,8 +15,8 @@ Key capabilities:
 - **Text input/output** — send and receive text within a live session
 - **Audio transcriptions** — get text transcripts of both input and output audio
 - **Voice Activity Detection (VAD)** — automatic interruption handling
-- **Native audio** — thinking (with configurable `thinkingLevel`)
-- **Function calling** — synchronous tool use
+- **Native audio** — interleaved reasoning on 3.8 Live; extended background reasoning on 3.8 Live Extended Thinking
+- **Function calling** — async by default on 3.8 Live (`NON_BLOCKING`); use `behavior: BLOCKING` when the model must wait for tool results
 - **Google Search grounding** — ground responses in real-time search results
 - **Session management** — context compression, session resumption, GoAway signals
 - **Ephemeral tokens** — secure client-side authentication
@@ -26,13 +26,11 @@ Key capabilities:
 
 ## Models
 
-- `gemini-3.1-flash-live-preview` — Optimized for low-latency, real-time dialogue. Native audio output, thinking (via `thinkingLevel`). 128k context window. **This is the recommended model for all Live API use cases.**
+- `gemini-3.8-live` — Default stable Live API model: low-latency voice agents, visual grounding, async function calling. **Recommended for most Live API use cases (including Talent2030).**
+- `gemini-3.8-live-extended-thinking` — High-reasoning live audio; async tools only; use `thinking_config` and `interaction_status` on the client.
 
 > [!WARNING]
-> The following Live API models are **deprecated** and will be shut down. Migrate to `gemini-3.1-flash-live-preview`.
-> - `gemini-2.5-flash-native-audio-preview-12-2025` — Migrate to `gemini-3.1-flash-live-preview`.
-> - `gemini-live-2.5-flash-preview` — Released June 17, 2025. Shutdown: December 9, 2025.
-> - `gemini-2.0-flash-live-001` — Released April 9, 2025. Shutdown: December 9, 2025.
+> Legacy preview Live models (e.g. `gemini-3.1-flash-live-preview`) should be migrated to **`gemini-3.8-live`**. Older 2.x Live previews are deprecated — see [Gemini deprecations](https://ai.google.dev/gemini-api/docs/deprecations).
 
 ## SDKs
 
@@ -99,14 +97,14 @@ config = types.LiveConnectConfig(
     )
 )
 
-async with client.aio.live.connect(model="gemini-3.1-flash-live-preview", config=config) as session:
+async with client.aio.live.connect(model="gemini-3.8-live", config=config) as session:
     pass  # Session is active
 ```
 
 #### JavaScript
 ```js
 const session = await ai.live.connect({
-  model: 'gemini-3.1-flash-live-preview',
+  model: 'gemini-3.8-live',
   config: {
     responseModalities: ['audio'],
     systemInstruction: { parts: [{ text: 'You are a helpful assistant.' }] }
@@ -215,23 +213,22 @@ if (content?.interrupted) { /* Stop playback, clear audio queue */ }
 - **Audio+video session** — 2 min without compression
 - **Connection lifetime** — ~10 min (use session resumption)
 - **Context window** — 128k tokens (native audio) / 32k tokens (standard)
-- **Async function calling** — Not yet supported; function calling is synchronous only. The model will not start responding until you've sent the tool response.
-- **Proactive audio** — Not yet supported in Gemini 3.1 Flash Live. Remove any configuration for this feature.
-- **Affective dialogue** — Not yet supported in Gemini 3.1 Flash Live. Remove any configuration for this feature.
+- **Async function calling** — Default on `gemini-3.8-live` (`NON_BLOCKING`). Set `behavior: BLOCKING` on declarations when the model must wait for tool results before speaking.
+- **Proactive audio** — Always enabled on `gemini-3.8-live`; `proactive_audio: false` returns an error.
+- **Thinking config** — Not supported on `gemini-3.8-live` (omit `thinkingConfig`). Use `gemini-3.8-live-extended-thinking` with `thinking_level` low/medium/high when background reasoning is required.
 - **Code execution** — Not supported
 - **URL context** — Not supported
 
-## Migrating from Gemini 2.5 Flash Live
+## Migrating to Gemini 3.8 Live
 
-When migrating from `gemini-2.5-flash-native-audio-preview-12-2025` to `gemini-3.1-flash-live-preview`:
+When migrating from `gemini-3.1-flash-live-preview` (or older Live previews) to `gemini-3.8-live`:
 
-1. **Model string** — Update from `gemini-2.5-flash-native-audio-preview-12-2025` to `gemini-3.1-flash-live-preview`.
-2. **Thinking configuration** — Use `thinkingLevel` (`minimal`, `low`, `medium`, `high`) instead of `thinkingBudget`. Default is `minimal` for lowest latency.
-3. **Server events** — A single event can contain multiple content parts simultaneously (audio + transcript). Process **all** parts in each event.
-4. **Client content** — `send_client_content` is only for seeding initial context history (set `initial_history_in_client_content` in `history_config`). Use `send_realtime_input` for text during conversation.
-5. **Turn coverage** — Defaults to `TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO` instead of `TURN_INCLUDES_ONLY_ACTIVITY`. If sending constant video frames, consider sending only during audio activity to reduce costs.
-6. **Async function calling** — Not yet supported. Function calling is synchronous only.
-7. **Proactive audio & affective dialogue** — Not yet supported. Remove any configuration for these features.
+1. **Model string** — Use `gemini-3.8-live`.
+2. **Thinking configuration** — Omit `thinkingConfig` / `thinking_level` on 3.8 Live (not supported).
+3. **Function calling** — Async is the default; set `behavior: BLOCKING` on tools that must complete before the model speaks.
+4. **Server events** — Process **all** parts in each event (audio + transcript can arrive together).
+5. **Client content** — `sendClientContent` is supported for the full session; `turnComplete: true` interrupts active generation.
+6. **Proactive audio** — Always on; remove `proactive_audio: false` and affective dialogue config.
 
 ## Best Practices
 

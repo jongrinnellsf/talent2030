@@ -1,4 +1,5 @@
-import { GoogleGenAI, Modality, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Modality } from "@google/genai";
+import { resolveGeminiLiveModel } from "../../src/data/liveModel.ts";
 import type { LiveCoachPhase } from "../../src/data/learning/learningSessionTypes.ts";
 import {
   buildLearnerLiveSystemInstruction,
@@ -9,6 +10,7 @@ import {
   buildManagerCoachLiveSystemInstruction,
   getManagerCoachLiveTools,
 } from "../../src/data/managerCoachLivePrompt.ts";
+import { LIVE_COACH_VOICE } from "../../src/data/rehearseLiveConfig.ts";
 import { LIVE_SESSION_LANGUAGE } from "../../src/data/sessionLanguage.ts";
 
 export type LearnerLiveTokenRequest = {
@@ -19,7 +21,6 @@ export type LearnerLiveTokenRequest = {
   focusEmployeeId?: string | null;
   knowledgeCheck?: {
     question: string;
-    evaluationHints: string;
   };
 };
 
@@ -52,19 +53,20 @@ export async function createLearnerLiveToken(request: LearnerLiveTokenRequest = 
     tools.push({ functionDeclarations });
   }
 
+  const liveModel = resolveGeminiLiveModel();
+
   const token = await ai.authTokens.create({
     config: {
       uses: 10,
       expireTime,
       newSessionExpireTime,
       liveConnectConstraints: {
-        model: "gemini-3.1-flash-live-preview",
+        model: liveModel,
         config: {
           responseModalities: [Modality.AUDIO],
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           speechConfig: {
             languageCode: LIVE_SESSION_LANGUAGE,
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Pulcherrima" } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: LIVE_COACH_VOICE } },
           },
           systemInstruction: {
             parts: [
@@ -100,6 +102,6 @@ export async function createLearnerLiveToken(request: LearnerLiveTokenRequest = 
   return {
     token: token.name,
     expiresAt: expireTime,
-    model: "gemini-3.1-flash-live-preview",
+    model: liveModel,
   };
 }

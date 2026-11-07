@@ -47,16 +47,27 @@ function getSlideLabel(
   );
 }
 
+function collectElementTree(
+  spec: LearningSpec,
+  key: string,
+  into: LearningSpec["elements"]
+) {
+  const el = spec.elements[key];
+  if (!el || into[key]) return;
+  into[key] = el;
+  for (const child of el.children ?? []) {
+    collectElementTree(spec, child, into);
+  }
+}
+
 function buildSlideSpec(
   spec: LearningSpec,
   slideKey: string
 ): LearningSpec | null {
-  const el = spec.elements[slideKey];
-  if (!el) return null;
-  return {
-    root: slideKey,
-    elements: { [slideKey]: el },
-  };
+  const elements: LearningSpec["elements"] = {};
+  collectElementTree(spec, slideKey, elements);
+  if (!elements[slideKey]) return null;
+  return { root: slideKey, elements };
 }
 
 export function LearnerPathStage({
@@ -108,7 +119,7 @@ export function LearnerPathStage({
       <header className="learner-path-stage__header">
         <div className="learner-path-stage__header-copy">
           {pathTitle && <h2 className="learner-path-stage__title">{pathTitle}</h2>}
-          <p className="learner-path-stage__meta">
+          <div className="learner-path-stage__meta">
             <span>
               Step {activeIndex + 1} of {slideKeys.length}
               {loading && " · Updating…"}
@@ -121,7 +132,7 @@ export function LearnerPathStage({
                 <PathResearchSourcesTooltip sources={pathResearchSources} />
               </>
             )}
-          </p>
+          </div>
         </div>
       </header>
 

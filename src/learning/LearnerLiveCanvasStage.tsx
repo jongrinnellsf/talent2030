@@ -1,9 +1,11 @@
-import { memo, useLayoutEffect, useRef } from "react";
+import { JSONUIProvider, Renderer } from "@json-render/react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import type { LiveCanvasPayload } from "./liveCanvasTypes";
+import { compileLiveCanvasSpec } from "./compileLiveCanvasSpec";
 import { CANVAS_UPDATE_LOADING_MESSAGES } from "../data/learning/loadingMessages";
 import { CanvasPendingHint } from "./components/CanvasPendingHint";
 import { LearningCanvasChrome } from "./components/LearningCanvasChrome";
-import { LiveCanvasPolished } from "./components/LiveCanvasPolished";
+import { registry } from "./registry";
 
 type LearnerLiveCanvasStageProps = {
   payload: LiveCanvasPayload;
@@ -21,6 +23,7 @@ function LearnerLiveCanvasStageInner({
   canvasPendingMessages,
 }: LearnerLiveCanvasStageProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const spec = useMemo(() => compileLiveCanvasSpec(payload), [payload]);
 
   useLayoutEffect(() => {
     if (updateVersion === 0) return;
@@ -46,7 +49,9 @@ function LearnerLiveCanvasStageInner({
         />
         <LearningCanvasChrome>
           <div className="learner-json-render" data-topic={payload.topic}>
-            <LiveCanvasPolished payload={payload} />
+            <JSONUIProvider registry={registry} initialState={{}}>
+              <Renderer spec={spec} registry={registry} />
+            </JSONUIProvider>
           </div>
         </LearningCanvasChrome>
       </div>

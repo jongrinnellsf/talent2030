@@ -6,9 +6,8 @@ import { learningCatalog } from "../../src/learning/catalog.ts";
 import type { LearningSpec } from "../../src/learning/catalog.ts";
 import { parseModelSpec } from "../../src/learning/parseModelSpec.ts";
 import { voiceDnaPromptBlock } from "../../src/data/skills/voiceStyle.ts";
+import { GEMINI_TEXT_MODEL } from "../../src/data/liveModel.ts";
 import { researchPathTopic } from "./researchPathTopic.ts";
-
-const GENERATE_MODEL = "gemini-2.5-flash";
 
 export type PersonalizedPathRequest = {
   topicId?: string;
@@ -37,11 +36,12 @@ function buildPersonalizedPrompt(
       "children on LearningPath must list exactly 6 keys in order: intro, slide-1, slide-2, slide-3, slide-4, knowledge-check.",
       "intro: IntroSlide with personalized title and subtitle based on learner answers.",
       "slide-1 through slide-4: GeneratedSlide with title (string), body (string), bullets (optional string array, 2-4 items).",
-      "knowledge-check: KnowledgeCheckSlide with question (string), expectedAnswer (string, coach-only), evaluationHints (string, coach-only rubric).",
+      "knowledge-check: KnowledgeCheckSlide with question (string), choices (array of exactly 4 strings), correctIndex (integer 0-3), and explanation (string, one sentence shown only after a correct selection).",
       "Write original teaching copy tailored to the learner's answers. Keep each slide focused and scannable.",
+      "Every learner-visible string is English. Do not write another language.",
       "When web research notes are provided below, treat them as authoritative for current product facts—prefer them over stale training knowledge.",
-      "The knowledge check should be one open-ended question that tests the main concept from the path.",
-      "Every learner-visible string (IntroSlide, GeneratedSlide, KnowledgeCheckSlide) must follow Voice DNA below.",
+      "The knowledge check is multiple choice. One choice is clearly correct from the slides. The other three are plausible and wrong. Do not use 'all of the above'.",
+      "Do not use Canvas, Callout, BulletList, Steps, Compare, PromptList, Figure, Accordion, or Choice in this path. Slides stay IntroSlide, GeneratedSlide, and KnowledgeCheckSlide.",
     ],
   });
 
@@ -56,8 +56,7 @@ Use the intake answers as the primary signal. Use employee.md only when it impro
 Learner personalization summary: ${summary}
 
 Answer 1 (prior knowledge): ${answers[0] ?? ""}
-Answer 2 (goals/interests): ${answers[1] ?? ""}
-Answer 3 (preferred depth): ${answers[2] ?? ""}
+Answer 2 (goals): ${answers[1] ?? ""}
 ${
   researchNotes.trim()
     ? `
@@ -89,8 +88,9 @@ Example shape:
       "type": "KnowledgeCheckSlide",
       "props": {
         "question": "...",
-        "expectedAnswer": "...",
-        "evaluationHints": "..."
+        "choices": ["...", "...", "...", "..."],
+        "correctIndex": 0,
+        "explanation": "..."
       }
     }
   }
@@ -148,10 +148,15 @@ function fallbackPersonalizedSpec(topicTitle: string, summary: string): Learning
       "knowledge-check": {
         type: "KnowledgeCheckSlide",
         props: {
-          question: `In your own words, what is the most important thing to remember about ${topicTitle}?`,
-          expectedAnswer: `A concise summary of the core concept from ${topicTitle}.`,
-          evaluationHints:
-            "Accept answers that capture the main idea even if wording differs. Partial credit for incomplete but directionally correct answers.",
+          question: `Which step best matches how to use ${topicTitle} after this path?`,
+          choices: [
+            "Apply the main idea from the slides to a real task",
+            "Skip practice and rely on memory alone",
+            "Ignore the examples and switch tools",
+            "Treat the slides as optional background",
+          ],
+          correctIndex: 0,
+          explanation: `Use the main idea from ${topicTitle} on a real task.`,
         },
       },
     },
@@ -192,26 +197,36 @@ async function generatePersonalizedSpec(
   employeeMd: string,
   researchNotes: string
 ): Promise<LearningSpec> {
-  const response = await ai.models.generateContent({
-    model: GENERATE_MODEL,
-    contents: buildPersonalizedPrompt(
-      topicTitle,
-      answers,
-      summary,
-      employeeMd,
-      researchNotes
-    ),
-    config: {
-      responseMimeType: "application/json",
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 50_000);
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_TEXT_MODEL,
+      contents: buildPersonalizedPrompt(
+        topicTitle,
+        answers,
+        summary,
+        employeeMd,
+        researchNotes
+      ),
+      config: {
+        responseMimeType: "application/json",
+        abortSignal: controller.signal,
+      },
+    });
 
-  const text = response.text?.trim() ?? "";
-  const parsed = parseModelSpec(text);
-  const sanitized = parsed ? sanitizePersonalizedSpec(parsed, topicTitle) : null;
-  if (sanitized) return sanitized;
+    const text = response.text?.trim() ?? "";
+    const parsed = parseModelSpec(text);
+    const sanitized = parsed ? sanitizePersonalizedSpec(parsed, topicTitle) : null;
+    if (sanitized) return sanitized;
 
-  return fallbackPersonalizedSpec(topicTitle, summary);
+    return fallbackPersonalizedSpec(topicTitle, summary);
+  } catch (err) {
+    console.error("[learning] Personalized spec generation failed, using fallback:", err);
+    return fallbackPersonalizedSpec(topicTitle, summary);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function handlePersonalizedPathGenerate(
@@ -222,10 +237,10 @@ export async function handlePersonalizedPathGenerate(
   const topicTitle = typeof body.topicTitle === "string" ? body.topicTitle.trim() : "";
   const summary = typeof body.summary === "string" ? body.summary.trim() : "";
   const answers = Array.isArray(body.answers)
-    ? body.answers.map((a) => (typeof a === "string" ? a.trim() : "")).slice(0, 3)
+    ? body.answers.map((a) => (typeof a === "string" ? a.trim() : "")).slice(0, 2)
     : [];
 
-  while (answers.length < 3) answers.push("");
+  while (answers.length < 2) answers.push("");
 
   if (!topicTitle) {
     res.status(400).json({ error: "topicTitle is required." });
@@ -236,6 +251,9 @@ export async function handlePersonalizedPathGenerate(
     typeof body.employeeMd === "string" && body.employeeMd.trim()
       ? body.employeeMd.trim()
       : buildEmployeeMarkdown();
+
+  const started = Date.now();
+  console.log(`[learning] Personalized path started: ${topicTitle}`);
 
   const { notes: researchNotes, sources: researchSources } = await researchPathTopic(
     ai,
@@ -257,4 +275,5 @@ export async function handlePersonalizedPathGenerate(
     ...spec,
     pathResearchSources: researchSources.length > 0 ? researchSources : undefined,
   });
+  console.log(`[learning] Personalized path ready in ${Date.now() - started}ms: ${topicTitle}`);
 }

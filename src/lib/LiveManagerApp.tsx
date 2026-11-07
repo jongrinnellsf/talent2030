@@ -11,6 +11,7 @@ import { SessionAssessmentPanel } from "../components/rehearse/SessionAssessment
 import { useAgentContext } from "../context/AgentContextProvider";
 import { useCoachSession } from "../context/CoachSessionContext";
 import { DEFAULT_EMPLOYEE_ID, getDirectReport } from "../data/directReports";
+import { GEMINI_LIVE_MODEL } from "../data/liveModel";
 import { SIMULATE_SCENARIOS, type SimulateScenarioId } from "../data/simulateScenarios";
 import { isRehearseMode } from "../data/sessionModes";
 import {
@@ -677,19 +678,24 @@ export default function LiveManagerApp({
       });
 
       const session = await ai.live.connect({
-        model: model ?? "gemini-3.1-flash-live-preview",
+        model: model ?? GEMINI_LIVE_MODEL,
         callbacks: {
           onmessage: handleRehearseMessage,
           onerror: () => {
-            setConnectionError("Voice session error. Try reconnecting.");
             stopSession();
+            setConnectionError("Voice session error. Try reconnecting.");
           },
-          onclose: () => {
+          onclose: (event) => {
+            const reason = event.reason?.trim();
+            const wasConnecting = isConnectingRef.current;
             if (!stoppingRef.current) {
-              if (isConnectingRef.current) {
-                setConnectionError("Connection closed before session started.");
-              }
               stopSession();
+              setConnectionError(
+                reason ||
+                  (wasConnecting
+                    ? "Connection closed before session started."
+                    : "Voice session ended.")
+              );
             }
           },
         },
@@ -736,12 +742,10 @@ export default function LiveManagerApp({
       console.error("Error starting rehearsal session", err);
       setIsConnecting(false);
       isConnectingRef.current = false;
-      setConnectionError(
-        err instanceof Error
-          ? err.message
-          : "Could not start rehearsal session."
-      );
+      const message =
+        err instanceof Error ? err.message : "Could not start rehearsal session.";
       stopSession();
+      setConnectionError(message);
     }
   };
 

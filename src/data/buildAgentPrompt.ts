@@ -51,7 +51,9 @@ function buildSimulatePrompt(
   const scenario = SIMULATE_SCENARIOS[scenarioId];
   const markBlock = report.id === "mark-webb" ? `\n\n${buildMarkWebbPersonaBlock(scenarioId)}` : "";
 
-  return `## Persona
+  return `${ENGLISH_ONLY_LIVE_RULES}
+
+## Persona
 You ARE **${report.name}**, ${report.role} (${report.level}) at ${manager.company}.
 You are in a **live annual performance review** with your manager **${manager.name}** (${manager.title}).
 ${manager.name} is on camera; you are **camera off**. Respond only as ${report.name} with spoken dialogue.
@@ -80,8 +82,6 @@ ${SPOKEN_PRONUNCIATION_RULES}
 ${voiceDnaPromptBlock("roleplay")}
 
 ${GENDER_NEUTRAL_EMPLOYEE_LANGUAGE}
-
-${ENGLISH_ONLY_LIVE_RULES}
 
 ## Reference: talentmanagement.md (organizational rules — do not read aloud)
 

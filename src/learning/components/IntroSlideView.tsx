@@ -9,9 +9,10 @@ export function IntroSlideView({
 }) {
   return (
     <article className="learning-slide learning-slide--intro">
+      <p className="learning-slide__eyebrow">Overview</p>
       <h2 className="learning-slide__title">{renderLearningInline(title)}</h2>
       {subtitle != null && subtitle !== "" && (
-        <p className="learning-slide__subtitle">{renderLearningInline(subtitle)}</p>
+        <p className="learning-slide__lead">{renderLearningInline(subtitle)}</p>
       )}
     </article>
   );

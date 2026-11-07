@@ -1,7 +1,7 @@
 import type { SimulateScenarioId } from "./simulateScenarios";
 
 /** Coach voice (Learn manager copilot). */
-export const LIVE_COACH_VOICE = "Pulcherrima";
+export const LIVE_COACH_VOICE = "Leda";
 
 /** Employee roleplay voice (Mark Webb and other directs). */
 export const REHEARSE_EMPLOYEE_VOICE = "Iapetus";

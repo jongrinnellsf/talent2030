@@ -3,6 +3,7 @@ import {
   renderLearningInline,
   splitSlideBodyAndBullets,
 } from "../../lib/renderInlineMarkdown";
+import { BulletListBlock, CalloutBlock } from "./canvasBlocks";
 export function GeneratedSlideView({
   title,
   body,
@@ -13,6 +14,7 @@ export function GeneratedSlideView({
   bullets?: string[];
 }) {
   const { intro, items } = splitSlideBodyAndBullets(body, bullets);
+  const [lead, ...rest] = items;
 
   return (
     <article className="learning-slide learning-slide--generated">
@@ -20,18 +22,8 @@ export function GeneratedSlideView({
       {intro ? (
         <p className="learning-slide__body">{renderLearningInline(intro)}</p>
       ) : null}
-      {items.length > 0 && (
-        <ul className="learning-slide__bullets">
-          {items.map((item, index) => {
-            const text = normalizeBulletText(item);
-            return (
-              <li key={`${index}-${text.slice(0, 40)}`}>
-                {renderLearningInline(text)}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {lead ? <CalloutBlock body={normalizeBulletText(lead)} /> : null}
+      {rest.length > 0 ? <BulletListBlock items={rest.map(normalizeBulletText)} /> : null}
     </article>
   );
 }
@@ -43,7 +35,7 @@ export function KnowledgeCheckSlideView({ question }: { question: string }) {
       <div className="learning-slide__question-card">
         <p className="learning-slide__question">{renderLearningInline(question)}</p>
       </div>
-      <p className="learning-slide__hint">Answer out loud when your coach asks.</p>
+      <p className="learning-slide__hint">Select the best answer on the check.</p>
     </article>
   );
 }

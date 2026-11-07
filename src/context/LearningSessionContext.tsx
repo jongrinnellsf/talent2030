@@ -52,7 +52,6 @@ export type VoiceSessionRequest = {
   replaceExisting?: boolean;
   knowledgeCheck?: {
     question: string;
-    evaluationHints: string;
   };
 };
 
@@ -152,7 +151,7 @@ export function LearningSessionProvider({ children }: { children: ReactNode }) {
     agentContext?.logEmployeeActivity({
       area: "Learning path",
       action: `Started path: ${topic.title}`,
-      detail: "Voice intake — three personalization questions.",
+      detail: "Voice intake — two personalization questions.",
     });
 
     setVoiceSessionRequest({
@@ -280,7 +279,7 @@ export function LearningSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recordIntakeAnswer = useCallback(() => {
-    setIntakeQuestionsAnswered((count) => Math.min(count + 1, 3));
+    setIntakeQuestionsAnswered((count) => Math.min(count + 1, 2));
   }, []);
 
   const applyLiveCanvas = useCallback((toolArgs: unknown): ParseLiveCanvasResult => {
@@ -428,24 +427,14 @@ export function LearningSessionProvider({ children }: { children: ReactNode }) {
       detail: knowledgeCheck.question,
     });
 
-    setVoiceSessionRequest({
-      topicTitle: selectedTopic.title,
-      livePhase: "assessment",
-      replaceExisting: true,
-      knowledgeCheck: {
-        question: knowledgeCheck.question,
-        evaluationHints: knowledgeCheck.evaluationHints,
-      },
-      kickoffText: [
-        "I'm ready for the knowledge check. This is the final step. The course ends after this.",
-        `Question on screen: "${knowledgeCheck.question}"`,
-        `Evaluation hints (do not read aloud): ${knowledgeCheck.evaluationHints}`,
-        `Expected answer shape (do not reveal): ${knowledgeCheck.expectedAnswer}`,
-        "When I pass, call complete_path immediately. Do not offer a next section or more content.",
-        "Read the question aloud now and listen for my spoken answer.",
-      ].join(" "),
-    });
-  }, [agentContext, knowledgeCheck, selectedTopic]);
+    sendCoachTextRef.current?.(
+      [
+        "[The knowledge check is now on screen as four choices.]",
+        "In one short sentence, invite them to select the best answer.",
+        "Do not ask them to answer out loud. Do not name the correct choice. Do not call tools.",
+      ].join(" ")
+    );
+  }, [agentContext, knowledgeCheck, selectedTopic, sendCoachTextRef]);
 
   const markPathComplete = useCallback(
     (feedback: string, takeaway?: string) => {

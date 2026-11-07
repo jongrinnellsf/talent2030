@@ -37,6 +37,17 @@ const sectionSchema = z.discriminatedUnion("kind", [
     leftPoints: z.array(z.string()),
     rightPoints: z.array(z.string()),
   }),
+  z.object({
+    kind: z.literal("figure"),
+    heading: z.string().nullable().optional(),
+    variant: z.enum(["flow", "stack", "compare"]),
+    caption: z.string().nullable().optional(),
+  }),
+  z.object({
+    kind: z.literal("details"),
+    heading: z.string().nullable().optional(),
+    details: z.array(z.object({ title: z.string(), body: z.string() })).min(1),
+  }),
 ]);
 
 export const liveCanvasPayloadSchema = z.object({
@@ -76,6 +87,10 @@ const KIND_ALIASES: Record<string, string> = {
   list: "list",
   compare: "comparison",
   comparison: "comparison",
+  figure: "figure",
+  diagram: "figure",
+  details: "details",
+  accordion: "details",
 };
 
 function normalizeKind(raw: string | undefined): string {
@@ -159,6 +174,38 @@ function normalizeSection(raw: unknown): LiveCanvasSection | null {
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Record<string, unknown>;
   const kind = normalizeKind(typeof s.kind === "string" ? s.kind : undefined);
+
+  if (kind === "figure") {
+    const variant = s.variant === "stack" || s.variant === "compare" ? s.variant : "flow";
+    const caption =
+      (typeof s.caption === "string" && s.caption.trim()) ||
+      (typeof s.body === "string" && s.body.trim()) ||
+      undefined;
+    return { kind: "figure", variant, caption };
+  }
+
+  if (kind === "details") {
+    const rawDetails = Array.isArray(s.details) ? s.details : Array.isArray(s.items) ? s.items : [];
+    const details = rawDetails
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        const title = typeof row.title === "string" ? row.title.trim() : "";
+        const body =
+          (typeof row.body === "string" && row.body.trim()) ||
+          (typeof row.text === "string" && row.text.trim()) ||
+          "";
+        if (!title || !body) return null;
+        return { title, body };
+      })
+      .filter((item): item is { title: string; body: string } => item !== null);
+    if (details.length === 0) return null;
+    return {
+      kind: "details",
+      heading: typeof s.heading === "string" ? s.heading : undefined,
+      details,
+    };
+  }
 
   if (kind === "prompts" || extractPromptsArray(s)) {
     const promptsSection = normalizePromptsSection(s);
@@ -272,6 +319,22 @@ function sanitizeLiveCanvasPayload(payload: LiveCanvasPayload): LiveCanvasPayloa
           rightTitle: sanitizeCanvasText(section.rightTitle),
           leftPoints: section.leftPoints.map(sanitizeCanvasText),
           rightPoints: section.rightPoints.map(sanitizeCanvasText),
+        };
+      }
+      if (section.kind === "figure") {
+        return {
+          ...section,
+          caption: section.caption ? sanitizeCanvasText(section.caption) : section.caption,
+        };
+      }
+      if (section.kind === "details") {
+        return {
+          ...section,
+          heading: section.heading ? sanitizeCanvasText(section.heading) : section.heading,
+          details: section.details.map((item) => ({
+            title: sanitizeCanvasText(item.title),
+            body: sanitizeCanvasText(item.body),
+          })),
         };
       }
       return section;

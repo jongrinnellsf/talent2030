@@ -19,14 +19,15 @@ export type LiveCoachPhase =
   | "assessment";
 
 export type PersonalizationContext = {
-  answers: [string, string, string];
+  answers: [string, string];
   summary: string;
 };
 
 export type KnowledgeCheck = {
   question: string;
-  expectedAnswer: string;
-  evaluationHints: string;
+  choices: [string, string, string, string];
+  correctIndex: number;
+  explanation?: string;
 };
 
 export type SelectTopicPayload = PathTopic;
