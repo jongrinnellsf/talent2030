@@ -35,14 +35,17 @@ The learner sees ONE canvas that you update as the conversation moves—like a l
 - Keep spoken replies short (1–3 sentences). The canvas carries the detail.
 - You may write original teaching copy on the canvas (fundamentals, prompts, comparisons). Mention LMS or workplace sources in grounding_sources when relevant (lms, slack, gmail, meet, drive, calendar, asana, workday).
 
-## Canvas sections (use 1–4 per update — rendered as cards, badges, grids)
-- kind "text": heading optional, body — short explanation (displayed as lead paragraph)
-- kind "list": heading optional, items[] — numbered ranked rows (e.g. top 5 LLMs). Use only when order/ranking matters. The UI adds row numbers; do not prefix items with "1." or "2." in the text.
-- kind "bullets": heading optional, items[] — disc bullet list for key ideas, steps, or takeaways (3–6 items).
-- kind "prompts": heading optional, prompts[{ title, text, note? }] — copy-ready prompt cards
-- kind "comparison": leftTitle, rightTitle, leftPoints[], rightPoints[] — two-column cards; each side must be 2–5 bullet strings (e.g. training vs inference, Cursor vs ChatGPT)
-- kind "figure": variant is flow, stack, or compare, plus a caption. Use for a simple diagram. Do not invent image URLs.
-- kind "details": heading optional, details[{ title, body }] — extra explanation the learner can open. Keep the main point in another section.
+## Canvas sections (use 1–4 per update — show visuals first, keep labels terse)
+- Prefer a visual section ("diagram", "matrix", or "chart") over plain bullets whenever structure, tradeoffs, or numbers apply.
+- kind "diagram": variant "flow" | "stack" | "cycle", nodes[{ label, sublabel?, active? }] (2–6 short nodes), optional caption — workflows, pipelines, layers, or loops.
+- kind "matrix": axes [xLow, xHigh, yLow, yHigh], quadrants[{ title, detail?, items? }] (4 cells: topLeft, topRight, bottomLeft, bottomRight) — 2x2 frameworks and tradeoffs.
+- kind "chart": variant "bar" | "paired" | "radar", data[{ label, value, secondary?, active? }] (2–6 rows), optional unit ("/5", "%") and series [primary, compare] — benchmarks, scores, or skill profiles.
+- kind "text": heading optional, body — short lead explanation.
+- kind "list": heading optional, items[] — ranked rows (UI adds numbers; do not prefix "1.").
+- kind "bullets": heading optional, items[] — 3–5 concise bullets.
+- kind "prompts": heading optional, prompts[{ title, text, note? }] — copy-ready prompt cards.
+- kind "comparison": leftTitle, rightTitle, leftPoints[], rightPoints[] — two-column comparison (2–5 points each).
+- kind "details": heading optional, details[{ title, body }] — expandable extra detail.
 
 ## Google Search (enabled for this session)
 - You have **Google Search** for up-to-date facts (LLM models, product releases, news, benchmarks). Do not answer "current" or "top" lists from memory alone when search can refresh them.
@@ -274,28 +277,28 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
   name: "update_learning_canvas",
   behavior: Behavior.BLOCKING,
   description:
-    "Replace the learner canvas with content for their current question. Call frequently as the conversation evolves. Every string must be English.",
+    "Replace the canvas with concise English content (1–4 sections). Keep labels short so updates render fast.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       topic: {
         type: Type.STRING,
-        description: "Short canvas headline for this moment.",
+        description: "Short canvas headline.",
       },
       subtitle: {
         type: Type.STRING,
-        description: "Optional one-line framing under the headline.",
+        description: "Optional one-line framing.",
       },
       sections: {
         type: Type.ARRAY,
-        description: "1–4 sections shown on the canvas.",
+        description: "1–4 sections.",
         items: {
           type: Type.OBJECT,
           properties: {
             kind: {
               type: Type.STRING,
               description:
-                "text | list | bullets | prompts | comparison | figure | details",
+                "diagram | matrix | chart | text | bullets | list | prompts | comparison | details",
             },
             heading: { type: Type.STRING },
             body: { type: Type.STRING },
@@ -327,15 +330,63 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
             },
             variant: {
               type: Type.STRING,
-              description: "For kind figure only: flow, stack, or compare.",
+              description:
+                "diagram: flow|stack|cycle; chart: bar|paired|radar.",
             },
-            caption: {
-              type: Type.STRING,
-              description: "For kind figure only. One sentence under the diagram.",
+            nodes: {
+              type: Type.ARRAY,
+              description: "For diagram (2–6 nodes).",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  sublabel: { type: Type.STRING },
+                  active: { type: Type.BOOLEAN },
+                },
+                required: ["label"],
+              },
             },
+            axes: {
+              type: Type.ARRAY,
+              description: "For matrix: [xLow, xHigh, yLow, yHigh].",
+              items: { type: Type.STRING },
+            },
+            quadrants: {
+              type: Type.ARRAY,
+              description: "For matrix: 4 cells [topLeft, topRight, bottomLeft, bottomRight].",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  detail: { type: Type.STRING },
+                  items: { type: Type.ARRAY, items: { type: Type.STRING } },
+                },
+                required: ["title"],
+              },
+            },
+            unit: { type: Type.STRING },
+            series: {
+              type: Type.ARRAY,
+              description: "For paired/radar chart: [primaryLabel, secondaryLabel].",
+              items: { type: Type.STRING },
+            },
+            data: {
+              type: Type.ARRAY,
+              description: "For chart (2–6 rows).",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  value: { type: Type.NUMBER },
+                  secondary: { type: Type.NUMBER },
+                  active: { type: Type.BOOLEAN },
+                },
+                required: ["label", "value"],
+              },
+            },
+            caption: { type: Type.STRING },
             details: {
               type: Type.ARRAY,
-              description: "For kind details only. Each item is { title, body }.",
               items: {
                 type: Type.OBJECT,
                 properties: {
@@ -352,8 +403,7 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
       grounding_sources: {
         type: Type.ARRAY,
         items: { type: Type.STRING },
-        description:
-          "Optional: lms, slack, gmail, meet, drive, calendar, asana, workday — systems this answer draws from.",
+        description: "Optional: lms, slack, gmail, meet, drive, calendar, asana, workday.",
       },
     },
     required: ["topic", "sections"],

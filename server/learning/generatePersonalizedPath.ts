@@ -41,7 +41,7 @@ function buildPersonalizedPrompt(
       "Every learner-visible string is English. Do not write another language.",
       "When web research notes are provided below, treat them as authoritative for current product facts—prefer them over stale training knowledge.",
       "The knowledge check is multiple choice. One choice is clearly correct from the slides. The other three are plausible and wrong. Do not use 'all of the above'.",
-      "Do not use Canvas, Callout, BulletList, Steps, Compare, PromptList, Figure, Accordion, or Choice in this path. Slides stay IntroSlide, GeneratedSlide, and KnowledgeCheckSlide.",
+      "Do not use Canvas, Callout, BulletList, Steps, Compare, PromptList, Figure, Diagram, Matrix2x2, MetricChart, Accordion, or Choice in this path. Slides stay IntroSlide, GeneratedSlide, and KnowledgeCheckSlide.",
     ],
   });
 

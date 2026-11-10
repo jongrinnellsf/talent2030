@@ -6788,11 +6788,510 @@ body {
   max-width: 16rem;
 }
 
-.canvas-figure figcaption {
+.canvas-figure figcaption,
+.canvas-visual__caption {
   margin-top: 0.65rem;
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.43;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+}
+
+.canvas-visual {
+  margin: 0;
+}
+
+/* Diagram (flow, cycle, stack) */
+.canvas-diagram--flow,
+.canvas-diagram--cycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.canvas-diagram__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 148px;
+  min-width: 0;
+}
+
+.canvas-diagram__node {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-pearl);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.canvas-diagram__node--active {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-hairline));
+  background: var(--accent-brand-dim);
+}
+
+.canvas-diagram__node-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.canvas-diagram__index {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
   color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-diagram__node--active .canvas-diagram__index {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.canvas-diagram__label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.canvas-diagram__sublabel {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.canvas-diagram__connector {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  color: var(--text-muted);
+}
+
+.canvas-diagram__edge-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.canvas-diagram--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.canvas-diagram__layer {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-pearl);
+}
+
+.canvas-diagram__layer--active {
+  border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-hairline));
+  background: var(--accent-brand-dim);
+}
+
+.canvas-diagram__badge {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.canvas-diagram__layer--active .canvas-diagram__badge {
+  color: var(--color-primary);
+}
+
+.canvas-diagram__copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  min-width: 0;
+}
+
+.canvas-diagram__cycle-return {
+  margin-top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .canvas-diagram--flow,
+  .canvas-diagram--cycle {
+    flex-direction: column;
+  }
+
+  .canvas-diagram__step {
+    flex-direction: column;
+    align-items: stretch;
+    flex: none;
+  }
+
+  .canvas-diagram__arrow-svg {
+    transform: rotate(90deg);
+  }
+}
+
+/* Matrix2x2 */
+.canvas-matrix {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.canvas-matrix__y-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0 1.6rem;
+  gap: 0.4rem;
+  max-width: 4.75rem;
+  text-align: center;
+}
+
+.canvas-matrix__axis-pole {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.canvas-matrix__axis-line--vertical {
+  flex: 1;
+  width: 1px;
+  min-height: 24px;
+  background: var(--color-hairline);
+}
+
+.canvas-matrix__axis-line--horizontal {
+  flex: 1;
+  height: 1px;
+  background: var(--color-hairline);
+}
+
+.canvas-matrix__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.canvas-matrix__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.canvas-matrix__cell {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-pearl);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.canvas-matrix__cell--featured {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-hairline));
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-canvas));
+}
+
+.canvas-matrix__coord {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--text-muted);
+}
+
+.canvas-matrix__cell--featured .canvas-matrix__coord {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.canvas-matrix__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.canvas-matrix__detail {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.43;
+  color: var(--text-secondary);
+}
+
+.canvas-matrix__chips {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.canvas-matrix__chip {
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+
+.canvas-matrix__cell--featured .canvas-matrix__chip {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-hairline));
+  color: var(--color-primary);
+}
+
+.canvas-matrix__x-axis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0 0.15rem;
+}
+
+@media (max-width: 640px) {
+  .canvas-matrix {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas-matrix__y-axis,
+  .canvas-matrix__x-axis {
+    display: none;
+  }
+
+  .canvas-matrix__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* MetricChart (bar, paired, radar) */
+.canvas-chart__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.canvas-chart__heading {
+  margin: 0;
+}
+
+.canvas-chart__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.canvas-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.canvas-chart__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+}
+
+.canvas-chart__swatch--primary {
+  background: var(--chart-1);
+}
+
+.canvas-chart__swatch--secondary {
+  background: var(--chart-3);
+}
+
+.canvas-chart--bars {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-pearl);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.canvas-chart__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.canvas-chart__row-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.canvas-chart__label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+.canvas-chart__value {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.canvas-chart__value-secondary {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.canvas-chart__tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.canvas-chart__track {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-divider-soft);
+  overflow: hidden;
+}
+
+.canvas-chart__track--secondary {
+  height: 6px;
+}
+
+.canvas-chart__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.canvas-chart__fill--primary {
+  background: var(--chart-1);
+}
+
+.canvas-chart__fill--muted {
+  background: var(--chart-2);
+}
+
+.canvas-chart__fill--secondary {
+  background: var(--chart-3);
+}
+
+.canvas-chart--radar {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-pearl);
+  display: flex;
+  justify-content: center;
+}
+
+.canvas-chart__radar-svg {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  overflow: visible;
+}
+
+.canvas-chart__radar-ring {
+  fill: none;
+  stroke: var(--color-hairline);
+  stroke-width: 1;
+}
+
+.canvas-chart__radar-spoke {
+  stroke: var(--color-hairline);
+  stroke-width: 1;
+}
+
+.canvas-chart__radar-area--primary {
+  fill: rgb(0 102 204 / 0.12);
+  stroke: var(--chart-1);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.canvas-chart__radar-area--secondary {
+  fill: rgb(122 122 122 / 0.08);
+  stroke: var(--chart-3);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+  stroke-linejoin: round;
+}
+
+.canvas-chart__radar-dot {
+  fill: var(--chart-1);
+}
+
+.canvas-chart__radar-label {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--color-ink);
 }
 
 .canvas-accordion {
