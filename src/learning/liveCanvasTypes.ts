@@ -25,6 +25,7 @@ const matrixQuadrantSchema = z.object({
   title: z.string(),
   detail: z.string().nullable().optional(),
   items: z.array(z.string()).optional(),
+  active: z.boolean().optional(),
 });
 
 const chartRowSchema = z.object({
@@ -383,6 +384,7 @@ function normalizeQuadrant(raw: unknown, index: number): MatrixQuadrantItem | nu
   const items = normalizeListItems(
     asStringArray(o.items ?? o.points ?? o.bullets ?? o.examples)
   ).slice(0, 4);
+  const active = Boolean(o.active ?? o.emphasis ?? o.highlight ?? o.current);
 
   if (!title && !detail && items.length === 0) return null;
 
@@ -390,6 +392,7 @@ function normalizeQuadrant(raw: unknown, index: number): MatrixQuadrantItem | nu
     title: title || `Quadrant ${index + 1}`,
     ...(detail ? { detail } : {}),
     ...(items.length > 0 ? { items } : {}),
+    ...(active ? { active: true } : {}),
   };
 }
 
@@ -881,6 +884,7 @@ function sanitizeQuadrant(q: MatrixQuadrantItem): MatrixQuadrantItem {
     title: sanitizeCanvasText(q.title),
     ...(q.detail ? { detail: sanitizeCanvasText(q.detail) } : {}),
     ...(q.items ? { items: q.items.map(sanitizeCanvasText) } : {}),
+    ...(q.active ? { active: true } : {}),
   };
 }
 

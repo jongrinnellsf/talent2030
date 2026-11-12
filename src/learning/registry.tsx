@@ -244,6 +244,7 @@ function readSingleQuadrant(value: unknown): MatrixQuadrantItem {
     title: typeof row.title === "string" && row.title ? row.title : "—",
     detail: typeof row.detail === "string" ? row.detail : null,
     items: Array.isArray(row.items) ? row.items.map(String) : undefined,
+    ...(row.active ? { active: true } : {}),
   };
 }
 

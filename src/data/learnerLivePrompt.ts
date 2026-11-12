@@ -37,9 +37,9 @@ The learner sees ONE canvas that you update as the conversation moves—like a l
 
 ## Canvas sections (use 1–4 per update — show visuals first, keep labels terse)
 - Prefer a visual section ("diagram", "matrix", or "chart") over plain bullets whenever structure, tradeoffs, or numbers apply.
-- kind "diagram": variant "flow" | "stack" | "cycle", nodes[{ label, sublabel?, active? }] (2–6 short nodes), optional caption — workflows, pipelines, layers, or loops.
-- kind "matrix": axes [xLow, xHigh, yLow, yHigh], quadrants[{ title, detail?, items? }] (4 cells: topLeft, topRight, bottomLeft, bottomRight) — 2x2 frameworks and tradeoffs.
-- kind "chart": variant "bar" | "paired" | "radar", data[{ label, value, secondary?, active? }] (2–6 rows), optional unit ("/5", "%") and series [primary, compare] — benchmarks, scores, or skill profiles.
+- kind "diagram": variant "flow" | "stack" | "cycle". nodes are a sequence of 2–6 { label, sublabel?, active? }. Edges label the link between neighbors. A cycle draws a closed loop from the last node back to the first.
+- kind "matrix": axes [xLow, xHigh, yLow, yHigh], quadrants[{ title, detail?, items?, active? }] (4 cells: topLeft, topRight, bottomLeft, bottomRight). Set active on the one cell that matters.
+- kind "chart": variant "bar" | "paired" | "radar", data[{ label, value, secondary?, active? }] (2–6 rows), optional unit ("/5", "%"), maxValue when the scale is fixed, and series [primary, compare] — benchmarks, scores, or skill profiles.
 - kind "text": heading optional, body — short lead explanation.
 - kind "list": heading optional, items[] — ranked rows (UI adds numbers; do not prefix "1.").
 - kind "bullets": heading optional, items[] — 3–5 concise bullets.
@@ -360,11 +360,19 @@ export const UPDATE_LEARNING_CANVAS_DECLARATION: FunctionDeclaration = {
                   title: { type: Type.STRING },
                   detail: { type: Type.STRING },
                   items: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  active: {
+                    type: Type.BOOLEAN,
+                    description: "True on the one quadrant that matters.",
+                  },
                 },
                 required: ["title"],
               },
             },
             unit: { type: Type.STRING },
+            maxValue: {
+              type: Type.NUMBER,
+              description: "Chart scale ceiling when it is fixed, such as 5 or 100.",
+            },
             series: {
               type: Type.ARRAY,
               description: "For paired/radar chart: [primaryLabel, secondaryLabel].",

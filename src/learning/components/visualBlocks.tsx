@@ -30,26 +30,6 @@ function ArrowRightSvg() {
   );
 }
 
-function CycleLoopSvg() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M13 8a5 5 0 1 1-1.46-3.54M13 3v3h-3"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function findEdgeLabel(
   edges: DiagramEdgeItem[] | undefined,
   fromId: string,
@@ -58,6 +38,145 @@ function findEdgeLabel(
   if (!edges?.length) return null;
   const match = edges.find((e) => e.from === fromId && e.to === toId);
   return match?.label ?? null;
+}
+
+function CycleDiagram({
+  nodes,
+  edges,
+}: {
+  nodes: DiagramNodeItem[];
+  edges?: DiagramEdgeItem[];
+}) {
+  const count = nodes.length;
+  const hasDetail = nodes.some((node) => node.sublabel);
+  const nodeW = 116;
+  const nodeH = hasDetail ? 76 : 52;
+  const ringR = 72 + count * 11;
+  const w = ringR * 2 + nodeW + 16;
+  const h = ringR * 2 + nodeH + 16;
+  const cx = w / 2;
+  const cy = h / 2;
+
+  const pointAt = (index: number) => {
+    const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count;
+    return {
+      x: cx + Math.cos(angle) * ringR,
+      y: cy + Math.sin(angle) * ringR,
+    };
+  };
+
+  const closeMid = -Math.PI / 2 + ((count - 0.5) * 2 * Math.PI) / count;
+  const arrowX = cx + Math.cos(closeMid) * ringR;
+  const arrowY = cy + Math.sin(closeMid) * ringR;
+  const arrowDeg =
+    (Math.atan2(Math.cos(closeMid), -Math.sin(closeMid)) * 180) / Math.PI;
+  const loopLabel = findEdgeLabel(edges, nodes[count - 1].id, nodes[0].id);
+
+  return (
+    <div
+      className="canvas-diagram canvas-diagram--cycle"
+      style={{ maxWidth: w, aspectRatio: `${w} / ${h}` }}
+      role="list"
+    >
+      <svg
+        className="canvas-diagram__cycle-svg"
+        viewBox={`0 0 ${w} ${h}`}
+        aria-hidden="true"
+      >
+        <circle cx={cx} cy={cy} r={ringR} className="canvas-diagram__cycle-ring" />
+        <g transform={`translate(${arrowX} ${arrowY}) rotate(${arrowDeg})`}>
+          <path d="M-4.5 -3.5 L3.5 0 L-4.5 3.5" className="canvas-diagram__cycle-arrow" />
+        </g>
+      </svg>
+      {loopLabel ? (
+        <span className="canvas-diagram__cycle-hub">{loopLabel}</span>
+      ) : null}
+      {nodes.map((node, index) => {
+        const point = pointAt(index);
+        return (
+          <div
+            key={node.id || index}
+            role="listitem"
+            className={`canvas-diagram__cycle-node${
+              node.active ? " canvas-diagram__node--active" : ""
+            }`}
+            style={{
+              left: `${(point.x / w) * 100}%`,
+              top: `${(point.y / h) * 100}%`,
+              width: nodeW,
+            }}
+          >
+            <span className="canvas-diagram__index" aria-hidden="true">
+              {index + 1}
+            </span>
+            <span className="canvas-diagram__label">
+              {renderLearningInline(node.label)}
+            </span>
+            {node.sublabel ? (
+              <span className="canvas-diagram__sublabel">
+                {renderLearningInline(node.sublabel)}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function FlowDiagram({
+  nodes,
+  edges,
+}: {
+  nodes: DiagramNodeItem[];
+  edges?: DiagramEdgeItem[];
+}) {
+  return (
+    <div className="canvas-diagram-frame">
+      <div className="canvas-diagram canvas-diagram--flow" role="list">
+      {nodes.map((node, index) => {
+        const nextNode = nodes[index + 1];
+        const edgeLabel = nextNode ? findEdgeLabel(edges, node.id, nextNode.id) : null;
+        return (
+          <div key={node.id || index} role="listitem" className="canvas-diagram__step">
+            <div className="canvas-diagram__rail">
+              <span
+                className={`canvas-diagram__index${
+                  node.active ? " canvas-diagram__index--active" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {index + 1}
+              </span>
+              {nextNode ? (
+                <span className="canvas-diagram__line">
+                  {edgeLabel ? (
+                    <span className="canvas-diagram__edge-label">{edgeLabel}</span>
+                  ) : null}
+                  <ArrowRightSvg />
+                </span>
+              ) : null}
+            </div>
+            <div
+              className={`canvas-diagram__copy${
+                node.active ? " canvas-diagram__copy--active" : ""
+              }`}
+            >
+              <span className="canvas-diagram__label">
+                {renderLearningInline(node.label)}
+              </span>
+              {node.sublabel ? (
+                <span className="canvas-diagram__sublabel">
+                  {renderLearningInline(node.sublabel)}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+      </div>
+    </div>
+  );
 }
 
 export function DiagramBlock({
@@ -74,11 +193,6 @@ export function DiagramBlock({
   caption?: string | null;
 }) {
   if (nodes.length === 0) return null;
-
-  const loopLabel =
-    variant === "cycle" && nodes.length >= 2
-      ? findEdgeLabel(edges, nodes[nodes.length - 1].id, nodes[0].id)
-      : null;
 
   return (
     <figure className="live-canvas-polished__block canvas-visual">
@@ -112,69 +226,11 @@ export function DiagramBlock({
             </div>
           ))}
         </div>
+      ) : variant === "cycle" && nodes.length >= 2 ? (
+        <CycleDiagram nodes={nodes} edges={edges} />
       ) : (
-        <div
-          className={`canvas-diagram canvas-diagram--${variant}`}
-          role="list"
-        >
-          {nodes.map((node, index) => {
-            const nextNode = nodes[index + 1];
-            const edgeLabel = nextNode
-              ? findEdgeLabel(edges, node.id, nextNode.id)
-              : null;
-
-            return (
-              <div
-                key={node.id || index}
-                role="listitem"
-                className="canvas-diagram__step"
-              >
-                <div
-                  className={`canvas-diagram__node${
-                    node.active ? " canvas-diagram__node--active" : ""
-                  }`}
-                >
-                  <div className="canvas-diagram__node-head">
-                    <span className="canvas-diagram__index" aria-hidden="true">
-                      {index + 1}
-                    </span>
-                    <span className="canvas-diagram__label">
-                      {renderLearningInline(node.label)}
-                    </span>
-                  </div>
-                  {node.sublabel ? (
-                    <p className="canvas-diagram__sublabel">
-                      {renderLearningInline(node.sublabel)}
-                    </p>
-                  ) : null}
-                </div>
-
-                {nextNode ? (
-                  <div className="canvas-diagram__connector" aria-hidden="true">
-                    {edgeLabel ? (
-                      <span className="canvas-diagram__edge-label">
-                        {edgeLabel}
-                      </span>
-                    ) : null}
-                    <ArrowRightSvg />
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        <FlowDiagram nodes={nodes} edges={edges} />
       )}
-
-      {variant === "cycle" && nodes.length >= 2 ? (
-        <div className="canvas-diagram__cycle-return" aria-label="Repeats from step 1">
-          <CycleLoopSvg />
-          <span>
-            {loopLabel
-              ? `${loopLabel} → ${nodes[0].label}`
-              : `Loops back to ${nodes[0].label}`}
-          </span>
-        </div>
-      ) : null}
 
       {caption ? (
         <figcaption className="canvas-visual__caption">
@@ -216,48 +272,45 @@ export function Matrix2x2Block({
       ) : null}
 
       <div className="canvas-matrix">
-        <div className="canvas-matrix__y-axis" aria-hidden="true">
+        <div className="canvas-matrix__y" aria-hidden="true">
           <span className="canvas-matrix__axis-pole">{yHigh}</span>
           <span className="canvas-matrix__axis-line canvas-matrix__axis-line--vertical" />
           <span className="canvas-matrix__axis-pole">{yLow}</span>
         </div>
 
-        <div className="canvas-matrix__body">
+        <div className="canvas-matrix__plane">
           <div className="canvas-matrix__grid" role="list">
-            {quadrants.map((quad, index) => {
-              const isTargetQuadrant = index === 1;
-              return (
-                <div
-                  key={`${index}-${quad.title}`}
-                  role="listitem"
-                  className={`canvas-matrix__cell${
-                    isTargetQuadrant ? " canvas-matrix__cell--featured" : ""
-                  }`}
-                >
-                  <span className="canvas-matrix__coord">{coords[index]}</span>
-                  <h4 className="canvas-matrix__title">
-                    {renderLearningInline(quad.title)}
-                  </h4>
-                  {quad.detail ? (
-                    <p className="canvas-matrix__detail">
-                      {renderLearningInline(quad.detail)}
-                    </p>
-                  ) : null}
-                  {quad.items && quad.items.length > 0 ? (
-                    <ul className="canvas-matrix__chips">
-                      {quad.items.map((item, itemIdx) => (
-                        <li key={`${itemIdx}-${item.slice(0, 20)}`} className="canvas-matrix__chip">
-                          {renderLearningInline(item)}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              );
-            })}
+            {quadrants.map((quad, index) => (
+              <div
+                key={`${index}-${quad.title}`}
+                role="listitem"
+                className={`canvas-matrix__cell${
+                  quad.active ? " canvas-matrix__cell--active" : ""
+                }`}
+              >
+                <span className="canvas-matrix__coord">{coords[index]}</span>
+                <h4 className="canvas-matrix__title">
+                  {renderLearningInline(quad.title)}
+                </h4>
+                {quad.detail ? (
+                  <p className="canvas-matrix__detail">
+                    {renderLearningInline(quad.detail)}
+                  </p>
+                ) : null}
+                {quad.items && quad.items.length > 0 ? (
+                  <ul className="canvas-matrix__chips">
+                    {quad.items.map((item, itemIdx) => (
+                      <li key={`${itemIdx}-${item.slice(0, 20)}`} className="canvas-matrix__chip">
+                        {renderLearningInline(item)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ))}
           </div>
 
-          <div className="canvas-matrix__x-axis" aria-hidden="true">
+          <div className="canvas-matrix__x" aria-hidden="true">
             <span className="canvas-matrix__axis-pole">{xLow}</span>
             <span className="canvas-matrix__axis-line canvas-matrix__axis-line--horizontal" />
             <span className="canvas-matrix__axis-pole">{xHigh}</span>
@@ -291,9 +344,6 @@ function computeChartCeiling(
   if (unit === "/10" && maxObserved <= 10) return 10;
   if (unit === "%" && maxObserved <= 100) return 100;
   if (maxObserved <= 0) return 1;
-  if (maxObserved <= 5) return 5;
-  if (maxObserved <= 10) return 10;
-  if (maxObserved <= 100 && Number.isInteger(maxObserved)) return 100;
   return Math.ceil(maxObserved * 1.1);
 }
 
@@ -498,7 +548,9 @@ export function MetricChartBlock({
               <div
                 key={`${index}-${row.label}`}
                 role="listitem"
-                className="canvas-chart__row"
+                className={`canvas-chart__row${
+                  row.active ? " canvas-chart__row--active" : ""
+                }`}
               >
                 <div className="canvas-chart__row-meta">
                   <span className="canvas-chart__label">
@@ -515,24 +567,20 @@ export function MetricChartBlock({
                   </span>
                 </div>
 
-                <div className="canvas-chart__tracks">
-                  <div className="canvas-chart__track">
-                    <div
-                      className={`canvas-chart__fill ${
-                        mutedPrimary
-                          ? "canvas-chart__fill--muted"
-                          : "canvas-chart__fill--primary"
-                      }`}
-                      style={{ width: `${pct.toFixed(1)}%` }}
-                    />
-                  </div>
+                <div className="canvas-chart__track">
+                  <div
+                    className={`canvas-chart__fill ${
+                      mutedPrimary
+                        ? "canvas-chart__fill--muted"
+                        : "canvas-chart__fill--primary"
+                    }`}
+                    style={{ width: `${pct.toFixed(1)}%` }}
+                  />
                   {secondaryPct !== null ? (
-                    <div className="canvas-chart__track canvas-chart__track--secondary">
-                      <div
-                        className="canvas-chart__fill canvas-chart__fill--secondary"
-                        style={{ width: `${secondaryPct.toFixed(1)}%` }}
-                      />
-                    </div>
+                    <span
+                      className="canvas-chart__marker"
+                      style={{ left: `${secondaryPct.toFixed(1)}%` }}
+                    />
                   ) : null}
                 </div>
               </div>
