@@ -36,6 +36,40 @@ function compileSection(section: LiveCanvasSection): LearningSpec["elements"][st
         type: "Figure",
         props: { variant: section.variant, caption: section.caption ?? null },
       };
+    case "diagram":
+      return {
+        type: "Diagram",
+        props: {
+          heading: section.heading ?? null,
+          variant: section.variant,
+          nodes: section.nodes,
+          edges: section.edges,
+          caption: section.caption ?? null,
+        },
+      };
+    case "matrix":
+      return {
+        type: "Matrix2x2",
+        props: {
+          heading: section.heading ?? null,
+          axes: section.axes,
+          quadrants: section.quadrants,
+          caption: section.caption ?? null,
+        },
+      };
+    case "chart":
+      return {
+        type: "MetricChart",
+        props: {
+          heading: section.heading ?? null,
+          variant: section.variant,
+          unit: section.unit ?? null,
+          maxValue: section.maxValue ?? null,
+          series: section.series ?? null,
+          data: section.data,
+          caption: section.caption ?? null,
+        },
+      };
     case "details":
       return {
         type: "Accordion",

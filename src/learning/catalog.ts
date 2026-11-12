@@ -81,6 +81,91 @@ export const learningCatalog = defineCatalog(schema, {
       description:
         "Built-in diagram. variant is flow, stack, or compare. No image URLs.",
     },
+    Diagram: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        variant: z.enum(["flow", "stack", "cycle"]),
+        nodes: z
+          .array(
+            z.object({
+              id: z.string(),
+              label: z.string(),
+              sublabel: z.string().nullable().optional(),
+              active: z.boolean().optional(),
+            })
+          )
+          .min(2)
+          .max(6),
+        edges: z
+          .array(
+            z.object({
+              from: z.string(),
+              to: z.string(),
+              label: z.string().nullable().optional(),
+            })
+          )
+          .optional(),
+        caption: z.string().nullable().optional(),
+      }),
+      description: "Structured flow, layered stack, or cycle diagram (2-6 nodes).",
+    },
+    Matrix2x2: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        axes: z.tuple([z.string(), z.string(), z.string(), z.string()]),
+        quadrants: z.tuple([
+          z.object({
+            title: z.string(),
+            detail: z.string().nullable().optional(),
+            items: z.array(z.string()).optional(),
+            active: z.boolean().optional(),
+          }),
+          z.object({
+            title: z.string(),
+            detail: z.string().nullable().optional(),
+            items: z.array(z.string()).optional(),
+            active: z.boolean().optional(),
+          }),
+          z.object({
+            title: z.string(),
+            detail: z.string().nullable().optional(),
+            items: z.array(z.string()).optional(),
+            active: z.boolean().optional(),
+          }),
+          z.object({
+            title: z.string(),
+            detail: z.string().nullable().optional(),
+            items: z.array(z.string()).optional(),
+            active: z.boolean().optional(),
+          }),
+        ]),
+        caption: z.string().nullable().optional(),
+      }),
+      description:
+        "2x2 framework grid with axes [xLow, xHigh, yLow, yHigh] and 4 quadrants [topLeft, topRight, bottomLeft, bottomRight].",
+    },
+    MetricChart: {
+      props: z.object({
+        heading: z.string().nullable().optional(),
+        variant: z.enum(["bar", "paired", "radar"]),
+        unit: z.string().nullable().optional(),
+        maxValue: z.number().positive().nullable().optional(),
+        series: z.tuple([z.string(), z.string()]).nullable().optional(),
+        data: z
+          .array(
+            z.object({
+              label: z.string(),
+              value: z.number(),
+              secondary: z.number().nullable().optional(),
+              active: z.boolean().optional(),
+            })
+          )
+          .min(2)
+          .max(6),
+        caption: z.string().nullable().optional(),
+      }),
+      description: "Quantitative bar, paired comparison, or radar chart (2-6 items).",
+    },
     Accordion: {
       props: z.object({
         heading: z.string().nullable().optional(),

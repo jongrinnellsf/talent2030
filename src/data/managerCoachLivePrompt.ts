@@ -30,12 +30,15 @@ const CANVAS_RULES = `## Live canvas
 The manager sees ONE canvas you update as the conversation moves—not a slide course.
 
 - On most turns, call **update_learning_canvas** once with content that matches what they asked (frameworks, steps, examples, comparisons, scripts, checklists). **One canvas update per manager message**—do not call the tool twice before they speak again.
-- Replace the whole canvas each time. Use sections: text, list (ranked—UI adds numbers; do not prefix items with "1."), bullets, prompts, comparison.
+- Replace the whole canvas each time (1–4 concise sections). Prefer visual primitives ("Show, then tell") when framing structure, tradeoffs, or ratings:
+  - **diagram** (variant: "flow" | "stack" | "cycle", nodes are a sequence of 2–6 { label, sublabel?, active? }) — COIN arcs, review/PIP timelines, 1:1 flows, or context layers. A cycle closes from the last node back to the first.
+  - **matrix** (axes: [xLow, xHigh, yLow, yHigh], 4 quadrants [topLeft, topRight, bottomLeft, bottomRight] { title, detail?, items?, active? }) — Skill/Will, Radical Candor, delegation, or team calibration grids. Set active on the one cell that matters.
+  - **chart** (variant: "bar" | "paired" | "radar", 2–6 data rows { label, value, secondary?, active? }, optional unit "/5", maxValue when the scale is fixed, and series ["Self", "Manager"]) — rating gaps, calibration distribution, or role-bar profiles.
+  - Supporting sections: text, bullets, list (UI adds numbers; no "1." prefix), prompts (exact scripts/openers), comparison, details.
 - **Product names on canvas:** official spelling only (**Claude**, **Claude Code**) — never phonetic forms like Klawd.
-- **Canvas–voice sync:** Wait for a successful tool result before saying content is "on the canvas."
+- **Canvas–voice sync:** Wait for a successful tool result before saying content is "on the canvas." Keep visual labels terse so updates finish fast.
 - **After a canvas update**, give **one** brief spoken acknowledgment (1–2 sentences)—never repeat the same summary twice in back-to-back turns.
 - Keep spoken replies short (1–3 sentences). The canvas carries detail.
-- Match canvas shape to the topic: COIN breakdown, leadership habits, difficult-conversation steps, cycle timeline, 1:1 agenda, feedback phrases, etc.
 - Do **not** run intake or build LMS paths here. No finalize_intake or build_learning_path.
 - When they want a **live back-and-forth roleplay** with a direct report, direct them to **Rehearse with Mark** on the Coach tab (see Product navigation below)—do not roleplay the employee in this session.`;
 

@@ -25,6 +25,20 @@ import {
   TextBlock,
   type FigureVariant,
 } from "./components/canvasBlocks";
+import {
+  DiagramBlock,
+  Matrix2x2Block,
+  MetricChartBlock,
+  type DiagramVariant,
+  type MetricChartVariant,
+} from "./components/visualBlocks";
+import type {
+  DiagramEdgeItem,
+  DiagramNodeItem,
+  MatrixQuadrantItem,
+  MetricChartRow,
+} from "./liveCanvasTypes";
+
 export const { registry } = defineRegistry(learningCatalog, {
   components: {
     Card: shadcnComponents.Card,
@@ -86,6 +100,34 @@ export const { registry } = defineRegistry(learningCatalog, {
     Figure: ({ props }) => (
       <FigureBlock
         variant={readFigureVariant(props.variant)}
+        caption={typeof props.caption === "string" ? props.caption : null}
+      />
+    ),
+    Diagram: ({ props }) => (
+      <DiagramBlock
+        heading={typeof props.heading === "string" ? props.heading : null}
+        variant={readDiagramVariant(props.variant)}
+        nodes={Array.isArray(props.nodes) ? props.nodes.flatMap(readDiagramNode) : []}
+        edges={Array.isArray(props.edges) ? props.edges.flatMap(readDiagramEdge) : undefined}
+        caption={typeof props.caption === "string" ? props.caption : null}
+      />
+    ),
+    Matrix2x2: ({ props }) => (
+      <Matrix2x2Block
+        heading={typeof props.heading === "string" ? props.heading : null}
+        axes={readAxes(props.axes)}
+        quadrants={readQuadrants(props.quadrants)}
+        caption={typeof props.caption === "string" ? props.caption : null}
+      />
+    ),
+    MetricChart: ({ props }) => (
+      <MetricChartBlock
+        heading={typeof props.heading === "string" ? props.heading : null}
+        variant={readChartVariant(props.variant)}
+        unit={typeof props.unit === "string" ? props.unit : null}
+        maxValue={typeof props.maxValue === "number" ? props.maxValue : null}
+        series={readSeries(props.series)}
+        data={Array.isArray(props.data) ? props.data.flatMap(readChartRow) : []}
         caption={typeof props.caption === "string" ? props.caption : null}
       />
     ),
@@ -152,4 +194,99 @@ function readDetail(value: unknown): { title: string; body: string }[] {
 
 function readFigureVariant(value: unknown): FigureVariant {
   return value === "stack" || value === "compare" ? value : "flow";
+}
+
+function readDiagramVariant(value: unknown): DiagramVariant {
+  return value === "stack" || value === "cycle" ? value : "flow";
+}
+
+function readDiagramNode(value: unknown): DiagramNodeItem[] {
+  if (!value || typeof value !== "object") return [];
+  const row = value as Record<string, unknown>;
+  const label = typeof row.label === "string" ? row.label : "";
+  if (!label) return [];
+  const id = typeof row.id === "string" && row.id ? row.id : label;
+  return [
+    {
+      id,
+      label,
+      sublabel: typeof row.sublabel === "string" ? row.sublabel : null,
+      active: Boolean(row.active),
+    },
+  ];
+}
+
+function readDiagramEdge(value: unknown): DiagramEdgeItem[] {
+  if (!value || typeof value !== "object") return [];
+  const row = value as Record<string, unknown>;
+  const from = typeof row.from === "string" ? row.from : "";
+  const to = typeof row.to === "string" ? row.to : "";
+  if (!from || !to) return [];
+  return [{ from, to, label: typeof row.label === "string" ? row.label : null }];
+}
+
+function readAxes(value: unknown): [string, string, string, string] {
+  if (Array.isArray(value) && value.length >= 4) {
+    return [
+      String(value[0] ?? "Low"),
+      String(value[1] ?? "High"),
+      String(value[2] ?? "Low"),
+      String(value[3] ?? "High"),
+    ];
+  }
+  return ["Low", "High", "Low", "High"];
+}
+
+function readSingleQuadrant(value: unknown): MatrixQuadrantItem {
+  if (!value || typeof value !== "object") return { title: "—" };
+  const row = value as Record<string, unknown>;
+  return {
+    title: typeof row.title === "string" && row.title ? row.title : "—",
+    detail: typeof row.detail === "string" ? row.detail : null,
+    items: Array.isArray(row.items) ? row.items.map(String) : undefined,
+    ...(row.active ? { active: true } : {}),
+  };
+}
+
+function readQuadrants(
+  value: unknown
+): [MatrixQuadrantItem, MatrixQuadrantItem, MatrixQuadrantItem, MatrixQuadrantItem] {
+  const list = Array.isArray(value) ? value : [];
+  return [
+    readSingleQuadrant(list[0]),
+    readSingleQuadrant(list[1]),
+    readSingleQuadrant(list[2]),
+    readSingleQuadrant(list[3]),
+  ];
+}
+
+function readChartVariant(value: unknown): MetricChartVariant {
+  return value === "paired" || value === "radar" ? value : "bar";
+}
+
+function readSeries(value: unknown): [string, string] | null {
+  if (Array.isArray(value) && value.length >= 2) {
+    return [String(value[0]), String(value[1])];
+  }
+  return null;
+}
+
+function readChartRow(value: unknown): MetricChartRow[] {
+  if (!value || typeof value !== "object") return [];
+  const row = value as Record<string, unknown>;
+  const label = typeof row.label === "string" ? row.label : "";
+  const num = typeof row.value === "number" ? row.value : Number(row.value);
+  if (!label || !Number.isFinite(num)) return [];
+  const sec =
+    typeof row.secondary === "number" && Number.isFinite(row.secondary)
+      ? row.secondary
+      : null;
+  return [
+    {
+      label,
+      value: num,
+      secondary: sec,
+      active: Boolean(row.active),
+    },
+  ];
 }
